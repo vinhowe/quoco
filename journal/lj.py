@@ -10,6 +10,7 @@ from os import path, mkdir, urandom
 from typing import List, Tuple
 import atexit
 
+import argparse
 from cryptography.exceptions import InvalidSignature
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.backends import default_backend
@@ -17,6 +18,23 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 temp_edit_files: List[Tuple[tempfile.NamedTemporaryFile, str]] = []
+
+parser = argparse.ArgumentParser(description="personal encrypted journal")
+group = parser.add_mutually_exclusive_group()
+# no-op
+# group.add_argument(
+#     "-l",
+#     action="store_true",
+#     default=False,
+#     help="list all entries",
+# )
+group.add_argument(
+    "-d",
+    action="store",
+    help="get entry for specific date",
+)
+
+args = parser.parse_args()
 
 
 # noinspection PyBroadException
@@ -48,7 +66,7 @@ def today_date_string() -> str:
 
 
 def entry_filename(date) -> str:
-    return f"{date}.lj"
+    return get_lj_path(f"{date}.lj")
 
 
 def read_file(filename, key) -> str:
@@ -114,7 +132,7 @@ def open_journal_entry(date, key, catalog, catalog_name) -> None:
             obfuscated_name = entry["obfuscatedName"]
         write_file(header, entry_filename(obfuscated_name), key)
 
-    edit_file(f"{entry['obfuscatedName']}.lj", key)
+    edit_file(entry_filename(entry['obfuscatedName']), key)
 
 
 def gen_password_key(password: str, b64_salt: bytes):
@@ -153,13 +171,25 @@ def check_catalog(catalog_name, salt):
         write_file(json.dumps({"entries": []}), catalog_name, key)
 
 
+def mkdir_if_not_exist(dir_path: str) -> None:
+    if not file_exists(dir_path):
+        mkdir(dir_path)
+
+
 def get_lj_path(filename: str) -> str:
     lj_dir_path = ".lj/"
 
-    if not file_exists(lj_dir_path):
-        mkdir(lj_dir_path)
+    mkdir_if_not_exist(lj_dir_path)
 
     return path.abspath(path.join(lj_dir_path, filename))
+
+
+def get_entries_path(filename: str) -> str:
+    entries_path = "entries/"
+
+    mkdir_if_not_exist(entries_path)
+
+    return path.abspath(path.join(entries_path, filename))
 
 
 def load_secrets():
@@ -202,12 +232,6 @@ def launch_journal_editor(date_string=None) -> None:
 
     open_journal_entry(date, key, catalog, catalog_name)
 
-    post_run_date = today_date_string()
 
-    # date_changed = not file_exists(date_filename(post_run_date))
-
-    # if date_changed:
-    #     launch_journal_editor(post_run_date)
-
-
-launch_journal_editor()
+if __name__ == "__main__":
+    launch_journal_editor(args.d)
