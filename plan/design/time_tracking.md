@@ -1,0 +1,9 @@
+# The time tracking/scheduling feedback loop
+
+For this to work, the time tracking needs to absolutely not get in my way ever at all. And it needs to be able to arbitrarily log (and backward log) things with just a quick description and allow me to go in and define them later. I'll explain this better with an example.
+
+Say I'm doing something and then someone asks me to help them with something urgent. I leave and forget to log the activity. Then when I get back, I realize that I left a task running for the several hours I was gone helping them. I only have a little bit of information here, so I have to estimate. I create a new element with a chunk starting at 10 minutes after I started the task. There's a special command for this. Not sure what it is yet. But this is a special task in that it is urgent and unplanned for. So it goes on a tally of emergency tasks.
+
+There's also distractions. When logging a distraction, I can just use whatever backward logging syntax I use with emergency tasks, but mark it as a distraction. These aren't really "tasks" in that I don't have a goal and I don't get anything valuable done, so they probably need an entirely separate classification. Although, something can be both a task and a distraction. If I stop doing a task to do another, less important task (without logging it?), it could qualify as a distraction. What I think this means is that chunks of time need to have an object that just requires a description and a time range as parameters.
+
+_For both emergency tasks and distractions,_ the system should provide several actions for the task I was working on beforehand: continue it (splitting it in two), cancel it (at the beginning of the interruptive element), or finish it (also at the beginning of the interruptive element). Cancelling a task means that it will not be marked as complete and will still need to be completed before its due date.

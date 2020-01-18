@@ -1,0 +1,10 @@
+*.swp
+*.code-workspace
+*.out
+venv/
+spec/*.md
+.ljcatalog
+*.lj
+.sj/
+.lj/
+# spec/*
