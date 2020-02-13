@@ -19,7 +19,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 temp_edit_files: List[Tuple[tempfile.NamedTemporaryFile, str]] = []
 
-parser = argparse.ArgumentParser(description="personal encrypted journal")
+parser = argparse.ArgumentParser(description="lj - personal encrypted journal")
 group = parser.add_mutually_exclusive_group()
 # no-op
 # group.add_argument(
@@ -35,7 +35,6 @@ group.add_argument(
 )
 
 args = parser.parse_args()
-
 
 # noinspection PyBroadException
 def remove_temp_files() -> None:
@@ -66,7 +65,7 @@ def today_date_string() -> str:
 
 
 def entry_filename(date) -> str:
-    return get_lj_path(f"{date}.lj")
+    return get_entries_path(f"{date}.lj")
 
 
 def read_file(filename, key) -> str:
@@ -85,7 +84,7 @@ def edit_file(filename: str, key: str) -> None:
     temp_edit_file.write(decrypted_content)
     temp_edit_file.flush()
 
-    command = f'vi + "+set noswapfile" {temp_edit_file.name}'
+    command = f'vi + "+set noswapfile | set viminfo=" {temp_edit_file.name}'
 
     subprocess.call(command, shell=True)
 
@@ -121,7 +120,7 @@ def open_journal_entry(date, key, catalog, catalog_name) -> None:
     entry = entry_in_catalog(date, catalog["entries"])
 
     if entry is None or not file_exists(entry_filename(entry["obfuscatedName"])):
-        days_since_jour_one = (jour_one() - datetime.datetime.now().date()).days
+        days_since_jour_one = (datetime.datetime.now().date() - jour_one()).days
         header = f"# {date} \nday {days_since_jour_one}\n\n\n"
         if entry is None:
             obfuscated_name = uuid.uuid4().hex
@@ -153,7 +152,7 @@ def gen_password_key(password: str, b64_salt: bytes):
     return base64.urlsafe_b64encode(kdf.derive(password_encoded))
 
 
-def check_catalog(catalog_name, salt):
+def check_catalog(catalog_name, salt) -> None:
     if not file_exists(catalog_name):
         print("no catalog file found")
         while True:
@@ -192,7 +191,7 @@ def get_entries_path(filename: str) -> str:
     return path.abspath(path.join(entries_path, filename))
 
 
-def load_secrets():
+def load_secrets() -> dict:
     secrets_file_name = "secrets.json"
     if not file_exists(get_lj_path(secrets_file_name)):
         secrets = {"salt": str(base64.b64encode(urandom(16)))}
@@ -224,6 +223,8 @@ def launch_journal_editor(date_string=None) -> None:
             continue
         break
         # TODO make sure this exits on when the right password is entered
+
+    # print(catalog)
 
     date = date_string if date_string is not None else today_date_string()
 

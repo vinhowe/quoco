@@ -104,7 +104,10 @@ def parse_config_date(date_str: str) -> datetime.date:
 def reconcile_config_with_files(
         slug_path_map: List[Tuple[str, str]], specs: dict
 ) -> dict:
+    found_slugs = []
+     
     for (slug, path_str) in slug_path_map:
+        found_slugs.append(slug)
         if slug in specs:
             # Update paths
             specs[slug]["path"] = path_str
@@ -116,9 +119,12 @@ def reconcile_config_with_files(
                 "due": today_str,
             }
 
-    # TODO: add pruning mechanism for deleted specs
+    updated_specs = specs.copy()
+    for spec in specs:
+        if spec not in found_slugs:
+            updated_specs.pop(spec)
 
-    return specs
+    return updated_specs
 
 
 def due_today(spec: dict) -> bool:
@@ -158,7 +164,7 @@ def review_spec_interactive() -> None:
         config: dict = load_data(data_path)
 
         # If subdirectory support is needed later, we'll add it
-        # file_paths: [str] = glob.glob("./**/*.spec.md", recursive=True)
+        # file_paths: List[str] = glob.glob("./**/*.spec.md", recursive=True)
 
         file_paths: List[str] = list(map(lambda p: path.abspath(p), glob.glob("./*.spec.md")))
 
@@ -168,10 +174,10 @@ def review_spec_interactive() -> None:
 
         specs: dict = reconcile_config_with_files(slug_path_map, config["specs"])
 
-        def due_delta_from_spec_config(v):
+        def due_delta_from_spec_config(v) -> int:
             return (parse_config_date(v[1]["due"]) - datetime.today().date()).days
 
-        # https://stackoverflow.com/a/22975080/1979008
+        # https://stackoverflow.com/a/22975080/19790008
         # specs_due_today = {k: v for k, v in specs.items() if due_today(v)}
 
         sorted_specs = sorted(specs.items(), key=due_delta_from_spec_config)
