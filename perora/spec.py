@@ -6,7 +6,11 @@ from typing import List
 import requests
 from prompt_toolkit import PromptSession
 from prompt_toolkit.application import get_app
-from prompt_toolkit.completion import NestedCompleter, FuzzyWordCompleter, FuzzyCompleter
+from prompt_toolkit.completion import (
+    NestedCompleter,
+    FuzzyWordCompleter,
+    FuzzyCompleter,
+)
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding.vi_state import InputMode
 
@@ -76,7 +80,11 @@ def remove_outside_char(input_str: str, char: str = "/"):
 
 def build_tree(element_data) -> dict:
     tree = {}
+    private_count = 0
     for slug, value in element_data.items():
+        if "private" in value and value["private"] and data["privateMode"]:
+            slug = f"<sensitive>/{private_count}"
+            private_count += 1
         display_element_data = {**value, "path": slug}
         attach_to_tree(slug, display_element_data, tree)
     return tree
@@ -148,7 +156,11 @@ def _command_edit_spec_element(args_str: str = "") -> None:
 
 def _command_about(args_str: str = ""):
     secure_print()
-    secure_print(terminal_format("perora life review system".center(100), [Colors.ULTRA_GROOVY, Colors.BOLD]))
+    secure_print(
+        terminal_format(
+            "perora life review system".center(100), [Colors.ULTRA_GROOVY, Colors.BOLD]
+        )
+    )
     secure_print(terminal_format("vin howe".center(100), [Colors.ITALIC]))
 
 
@@ -169,7 +181,9 @@ def _command_update_due(args_str: str = ""):
                 )
                 add_lines()
             except ValueError:
-                secure_print(f"{Colors.ENDC + Colors.SUPER_WARNING}invalid input{Colors.ENDC}")
+                secure_print(
+                    f"{Colors.ENDC + Colors.SUPER_WARNING}invalid input{Colors.ENDC}"
+                )
                 continue
             days_until_due = days_until_due_input
 
@@ -385,7 +399,9 @@ def run_command(command: str):
 
 def spec_item_listing(spec, show_due_info=True, format=True) -> str:
     global longest_item_length
-    inactive_extra_length = len("".join([Colors.BOLD, Colors.ULTRA_GROOVY, Colors.ENDC, Colors.ENDC]))
+    inactive_extra_length = len(
+        "".join([Colors.BOLD, Colors.ULTRA_GROOVY, Colors.ENDC, Colors.ENDC])
+    )
     indent = spec["path"].count("/")
     due_delta = (parse_config_date(spec["due"]) - datetime.today().date()).days
     due_info = f"[\u23F0 {due_info_str(due_delta, due_delta >= -7)}]"
@@ -397,7 +413,7 @@ def spec_item_listing(spec, show_due_info=True, format=True) -> str:
     else:
         path = spec["path"]
         name = spec["name"][:max_name_length] + (
-                spec["name"][max_name_length:] and "..."
+            spec["name"][max_name_length:] and "..."
         )
     if due_delta >= -7 and format:
         path = terminal_format(path, [Colors.BOLD])
@@ -622,9 +638,17 @@ def spec() -> None:
 
         # if first_loop:
         secure_print()
-        secure_print(terminal_format("perora floating spec", [Colors.BOLD, Colors.ULTRA_GROOVY]))
-        private_mode_on_off_statement = "on" if data["privateMode"] else "off"
-        secure_print(terminal_format(f"private mode {private_mode_on_off_statement} (\"private\" to toggle)", [Colors.ITALIC]))
+        secure_print(
+            terminal_format("perora floating spec", [Colors.BOLD, Colors.ULTRA_GROOVY])
+        )
+        private_mode_on_off_statement = (
+            terminal_format("on", [Colors.OKGREEN])
+            if data["privateMode"]
+            else terminal_format("off", [Colors.SUPER_WARNING, Colors.BOLD])
+        )
+        secure_print(
+            f'private mode {private_mode_on_off_statement} ("private" to toggle)'
+        )
         show_tree()
         # first_loop = False
         spec_element_slugs = [k for k in data["specs"].keys()]
@@ -637,22 +661,24 @@ def spec() -> None:
             spec_element_reviews[slug] = {
                 k: None for k in data["specs"][slug]["reviews"].keys()
             }
-        spec_completer = FuzzyCompleter(NestedCompleter.from_nested_dict(
-            {
-                "del": spec_element_slugs_completer,
-                "review": spec_element_reviews,
-                "reviews": spec_element_slugs_completer,
-                "edit": spec_element_slugs_completer,
-                "vi": spec_element_slugs_completer,
-                "move": spec_element_slugs_completer,
-                "due": spec_element_slugs_completer,
-                "rename": spec_element_slugs_completer,
-                "private": spec_element_slugs_completer,
-                "about": None,
-                "new": spec_element_slugs_completer,
-                "tree": None,
-                "exit": None,
-            })
+        spec_completer = FuzzyCompleter(
+            NestedCompleter.from_nested_dict(
+                {
+                    "del": spec_element_slugs_completer,
+                    "review": spec_element_reviews,
+                    "reviews": spec_element_slugs_completer,
+                    "edit": spec_element_slugs_completer,
+                    "vi": spec_element_slugs_completer,
+                    "move": spec_element_slugs_completer,
+                    "due": spec_element_slugs_completer,
+                    "rename": spec_element_slugs_completer,
+                    "private": spec_element_slugs_completer,
+                    "about": None,
+                    "new": spec_element_slugs_completer,
+                    "tree": None,
+                    "exit": None,
+                }
+            )
         )
 
         command = prompt_session.prompt(
@@ -667,7 +693,7 @@ def spec() -> None:
 
 
 def post_email(
-        domain, api_key, from_addr_name, from_name, to_addr, subject_line, body
+    domain, api_key, from_addr_name, from_name, to_addr, subject_line, body
 ) -> requests.Response:
     response = requests.post(
         f"https://api.mailgun.net/v3/{domain}/messages",
