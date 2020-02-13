@@ -10,8 +10,10 @@ class Colors:
     OKGREEN = '\033[92m'
     ENDC = '\033[0m'
     BOLD = '\033[1m'
-    INACTIVE = '\u001b[38;5;234m'
-    GROOVY = '\u001b[38;5;135m'
+    ITALIC = '\033[3m'
+    INACTIVE = '\u001b[38;5;234m\u001b[2m'
+    GROOVY = '\u001b[38;5;105m'
+    ULTRA_GROOVY = '\u001b[38;5;51m'
     UNDERLINE = '\033[4m'
 
 

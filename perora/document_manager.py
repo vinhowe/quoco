@@ -257,12 +257,15 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
     files_argument = " ".join([v["temp_file_path"] for v in documents_read_info])
     if len(documents_read_info) > 1:
         files_argument = f"-O {files_argument}"
+        # Account for Vim's "2 files to edit" output
+        add_lines()
+    else:
+        # TODO: Find out why this is needed
+        add_lines(-1)
 
     command = f'vi + "+{vi_secure_settings_string}" {files_argument}'
 
     subprocess.call(command, shell=True)
-    # Account for Vim's "2 files to edit" output
-    add_lines()
 
     for info in documents_read_info:
         with open(info["temp_file_path"]) as read_temp_edit_file:
@@ -270,6 +273,8 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
 
         # Should only be on file that's being closed
         _remove_temp_file(info["temp_file"], info["temp_file_path"])
+
+    clear_term()
 
 
 def edit_document(service_name: str, name: str, key: str) -> None:

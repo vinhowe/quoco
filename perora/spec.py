@@ -6,7 +6,7 @@ from typing import List
 import requests
 from prompt_toolkit import PromptSession
 from prompt_toolkit.application import get_app
-from prompt_toolkit.completion import NestedCompleter, FuzzyWordCompleter
+from prompt_toolkit.completion import NestedCompleter, FuzzyWordCompleter, FuzzyCompleter
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding.vi_state import InputMode
 
@@ -22,8 +22,6 @@ from perora.fs_util import _data_path, _per_ext_file, file_exists
 from perora.secure_fs_io import (
     _read_decrypt_file,
     _write_encrypt_file,
-    default_salt,
-    _gen_password_key,
 )
 from perora.secure_term import secure_print, add_lines, clear_term
 from perora.util import Colors, terminal_format
@@ -43,6 +41,9 @@ key = None
 catalog = {}
 inactive_after_days = 6
 notify_days_ahead = 3
+
+longest_item_length = 0
+due_info_padding = 30
 
 
 def attach_to_tree(path, value, trunk):
@@ -106,6 +107,7 @@ def _command_new_spec_element(args_str: str = "") -> None:
 
 
 def _command_remove_spec_element(args_str: str = "") -> None:
+    global data, key
     args: List[str] = args_str.split(" ", 1)
     if len(args) < 1:
         secure_print("del [path]")
@@ -115,6 +117,10 @@ def _command_remove_spec_element(args_str: str = "") -> None:
     if slug not in data["specs"]:
         secure_print(f"element '{slug}' doesn't exist, not deleting")
         return
+
+    if "reviews" in data["specs"][slug]:
+        for _, v in data["specs"][slug]["reviews"].items():
+            delete_document(spec_service_name, v["slug"], key)
 
     # Data will be saved after every loop, but if we decide to change this, we should create a function for flushing
     # as needed.
@@ -138,6 +144,12 @@ def _command_edit_spec_element(args_str: str = "") -> None:
         return
 
     _edit_spec_doc(slug)
+
+
+def _command_about(args_str: str = ""):
+    secure_print()
+    secure_print(terminal_format("perora life review system".center(100), [Colors.ULTRA_GROOVY, Colors.BOLD]))
+    secure_print(terminal_format("vin howe".center(100), [Colors.ITALIC]))
 
 
 def _command_update_due(args_str: str = ""):
@@ -282,7 +294,25 @@ def _command_rename_spec_element(args_str: str = "") -> None:
 
     data["specs"][path]["name"] = new_name
 
-    # _command_show_tree()
+
+def _command_toggle_privacy(args_str: str = "") -> None:
+    global key, data
+    args: List[str] = args_str.split(" ", 1)
+
+    if len(args) < 1 or len(args[0]) == 0:
+        if "privateMode" not in data:
+            data["privateMode"] = True
+        else:
+            data["privateMode"] = not data["privateMode"]
+    elif len(args[0]) > 0:
+        slug = args[0]
+
+        element = data["specs"][slug]
+
+        if "private" not in element:
+            element["private"] = True
+        else:
+            element["private"] = not element["private"]
 
 
 def _command_exit(args_str: str = "") -> None:
@@ -320,8 +350,10 @@ commands = {
     "edit": _command_edit_spec_element,
     "vi": _command_edit_spec_element,
     "due": _command_update_due,
+    "about": _command_about,
     "review": _command_review_spec_element,
     "reviews": _command_reviews_spec_element,
+    "private": _command_toggle_privacy,
     # "tree": show_tree,
     # "ls": show_tree,
     "help": _command_help,
@@ -351,6 +383,49 @@ def run_command(command: str):
         commands[command]()
 
 
+def spec_item_listing(spec, show_due_info=True, format=True) -> str:
+    global longest_item_length
+    inactive_extra_length = len("".join([Colors.BOLD, Colors.ULTRA_GROOVY, Colors.ENDC, Colors.ENDC]))
+    indent = spec["path"].count("/")
+    due_delta = (parse_config_date(spec["due"]) - datetime.today().date()).days
+    due_info = f"[\u23F0 {due_info_str(due_delta, due_delta >= -7)}]"
+    max_name_length = 60
+    # https://stackoverflow.com/questions/2872512/python-truncate-a-long-string/39017530
+    if "private" in spec and spec["private"] and data["privateMode"]:
+        path = "<sensitive>"
+        name = "<sensitive>"
+    else:
+        path = spec["path"]
+        name = spec["name"][:max_name_length] + (
+                spec["name"][max_name_length:] and "..."
+        )
+    if due_delta >= -7 and format:
+        path = terminal_format(path, [Colors.BOLD])
+        name = terminal_format(name, [Colors.ULTRA_GROOVY])
+
+    if show_due_info:
+        bullet = "  " * indent + f"--> {name} ({path})"
+        inactive_extra_length = inactive_extra_length if due_delta < -7 else 0
+        bullet = f"{bullet} {due_info.rjust(longest_item_length + due_info_padding - inactive_extra_length + len(due_info) - len(bullet))}"
+    else:
+        bullet = "  " * indent + f"--> {name} ({path})"
+
+    if due_delta < -7 and format:
+        bullet = terminal_format(bullet, [Colors.INACTIVE])
+
+    return bullet
+
+
+def compute_longest_item_length():
+    longest_length = 0
+    for key, element in data["specs"].items():
+        element["path"] = key
+        spec_string = spec_item_listing(element, show_due_info=False, format=False)
+        if len(spec_string) > longest_length:
+            longest_length = len(spec_string)
+    return longest_length
+
+
 def print_element_tree(d, indent=0) -> None:
     """
     Print the file tree structure with proper indentation.
@@ -361,24 +436,9 @@ def print_element_tree(d, indent=0) -> None:
 
     for key, value in d.items():
         if node_marker in value:
-            due_delta = (parse_config_date(value["due"]) - datetime.today().date()).days
-            due_info = f"{due_info_str(due_delta, due_delta >= -7)}"
-            path = value["path"]
-            max_name_length = 60
-            # https://stackoverflow.com/questions/2872512/python-truncate-a-long-string/39017530
-            name = value["name"][:max_name_length] + (
-                    value["name"][max_name_length:] and "..."
-            )
-            if due_delta >= -7:
-                path = terminal_format(path, [Colors.BOLD])
-                name = terminal_format(name, [Colors.GROOVY])
-                due_info = f"\u23F0 {due_info}"
-            bullet = "  " * indent + f"--> {name} ({path}) [{due_info}]"
-            if due_delta < -7:
-                bullet = terminal_format(bullet, [Colors.INACTIVE])
-            secure_print(bullet)
+            secure_print(spec_item_listing(value))
         else:
-            secure_print("  " * indent + str(key))
+            secure_print("  " * indent + terminal_format(key, [Colors.GROOVY]))
             if isinstance(value, dict):
                 print_element_tree(value, indent + 1)
             else:
@@ -414,7 +474,7 @@ def _load_data(key: str) -> dict:
     if file_exists(data_file_path):
         data_content = json.loads(_read_decrypt_file(data_file_path, key))
         return data_content
-    return {"specs": {}}
+    return {"specs": {}, "privateMode": False}
 
 
 def _load_due_map() -> dict:
@@ -521,16 +581,18 @@ def due_info_str(remaining_days: int, formatting=True) -> str:
 
 
 def print_tree(data: dict) -> None:
+    global longest_item_length
     display_tree = build_tree(data)
+    longest_item_length = compute_longest_item_length()
     print_element_tree(display_tree)
 
 
 def get_prompt_text():
     input_mode_map = {
-        InputMode.INSERT: ("bg:green fg:white bold", "[I]"),
-        InputMode.NAVIGATION: ("bg:red fg:white bold", "[N]"),
-        InputMode.REPLACE: ("bg:orange fg:white bold", "[R]"),
-        InputMode.INSERT_MULTIPLE: ("bg:blue fg:white bold", "[II]"),
+        InputMode.INSERT: ("bg:ansigreen fg:white bold", "[I]"),
+        InputMode.NAVIGATION: ("bg:ansired fg:white bold", "[N]"),
+        InputMode.REPLACE: ("bg:ansigreen fg:white bold", "[R]"),
+        InputMode.INSERT_MULTIPLE: ("bg:ansigreen fg:white bold", "[II]"),
     }
     input_mode = input_mode_map[get_app().vi_state.input_mode]
     # Make escape key register instantly--this is hacky but I don't want to make a full-fledged Prompt Toolkit
@@ -540,7 +602,7 @@ def get_prompt_text():
     return [
         input_mode,
         ("", " "),
-        ("fg:#c6017b bold", f"spec ~~> "),
+        ("fg:ansibrightcyan bold", f"spec ~~> "),
     ]
 
 
@@ -560,7 +622,9 @@ def spec() -> None:
 
         # if first_loop:
         secure_print()
-        secure_print(terminal_format("perora spec", [Colors.BOLD, Colors.OKGREEN]))
+        secure_print(terminal_format("perora floating spec", [Colors.BOLD, Colors.ULTRA_GROOVY]))
+        private_mode_on_off_statement = "on" if data["privateMode"] else "off"
+        secure_print(terminal_format(f"private mode {private_mode_on_off_statement} (\"private\" to toggle)", [Colors.ITALIC]))
         show_tree()
         # first_loop = False
         spec_element_slugs = [k for k in data["specs"].keys()]
@@ -573,7 +637,7 @@ def spec() -> None:
             spec_element_reviews[slug] = {
                 k: None for k in data["specs"][slug]["reviews"].keys()
             }
-        spec_completer = NestedCompleter.from_nested_dict(
+        spec_completer = FuzzyCompleter(NestedCompleter.from_nested_dict(
             {
                 "del": spec_element_slugs_completer,
                 "review": spec_element_reviews,
@@ -583,10 +647,12 @@ def spec() -> None:
                 "move": spec_element_slugs_completer,
                 "due": spec_element_slugs_completer,
                 "rename": spec_element_slugs_completer,
-                "new": None,
+                "private": spec_element_slugs_completer,
+                "about": None,
+                "new": spec_element_slugs_completer,
                 "tree": None,
                 "exit": None,
-            }
+            })
         )
 
         command = prompt_session.prompt(

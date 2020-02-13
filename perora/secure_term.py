@@ -5,7 +5,6 @@ def clear_term() -> None:
     global lines_written
     print(f"\u001b[{lines_written}A", end='')
     print("\u001b[0J", end='')
-    print("\u001b[2K", end='')
     lines_written = 0
 
 
