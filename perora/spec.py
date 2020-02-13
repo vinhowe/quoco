@@ -651,15 +651,16 @@ def spec() -> None:
         )
         show_tree()
         # first_loop = False
-        spec_element_slugs = [k for k in data["specs"].keys()]
+        specs = data["specs"]
+        spec_element_slugs = [k for k in specs.keys() if not "private" in specs[k] or not specs[k]["private"]]
         spec_element_slugs_completer = FuzzyWordCompleter(spec_element_slugs)
         spec_element_reviews = {}
         for slug in spec_element_slugs:
-            if "reviews" not in data["specs"][slug]:
+            if "reviews" not in specs[slug]:
                 spec_element_reviews[slug] = None
                 continue
             spec_element_reviews[slug] = {
-                k: None for k in data["specs"][slug]["reviews"].keys()
+                k: None for k in specs[slug]["reviews"].keys()
             }
         spec_completer = FuzzyCompleter(
             NestedCompleter.from_nested_dict(
