@@ -413,7 +413,7 @@ def spec_item_listing(spec, show_due_info=True, format=True) -> str:
     else:
         path = spec["path"]
         name = spec["name"][:max_name_length] + (
-            spec["name"][max_name_length:] and "..."
+                spec["name"][max_name_length:] and "..."
         )
     if due_delta >= -7 and format:
         path = terminal_format(path, [Colors.BOLD])
@@ -652,7 +652,8 @@ def spec() -> None:
         show_tree()
         # first_loop = False
         specs = data["specs"]
-        spec_element_slugs = [k for k in specs.keys() if not "private" in specs[k] or not specs[k]["private"]]
+        spec_element_slugs = [k for k in specs.keys() if
+                              (not "private" in specs[k] or not specs[k]["private"]) or not data["privateMode"]]
         spec_element_slugs_completer = FuzzyWordCompleter(spec_element_slugs)
         spec_element_reviews = {}
         for slug in spec_element_slugs:
@@ -694,7 +695,7 @@ def spec() -> None:
 
 
 def post_email(
-    domain, api_key, from_addr_name, from_name, to_addr, subject_line, body
+        domain, api_key, from_addr_name, from_name, to_addr, subject_line, body
 ) -> requests.Response:
     response = requests.post(
         f"https://api.mailgun.net/v3/{domain}/messages",
