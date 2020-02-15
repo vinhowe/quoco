@@ -342,9 +342,7 @@ def _command_help(args_str: str = ""):
 
 
 def show_tree(args_str: str = ""):
-    secure_print("")
     print_tree(data["specs"])
-    secure_print("")
 
 
 def _purge_overdue_spec_elements() -> None:
@@ -622,10 +620,28 @@ def get_prompt_text():
     ]
 
 
+def print_header() -> None:
+    secure_print()
+    secure_print(
+        terminal_format("perora floating spec", [Colors.BOLD, Colors.ULTRA_GROOVY])
+    )
+    private_mode_on_off_statement = (
+        terminal_format("on", [Colors.OKGREEN])
+        if data["privateMode"]
+        else terminal_format("off", [Colors.SUPER_WARNING, Colors.BOLD])
+    )
+    secure_print(
+        f'private mode {private_mode_on_off_statement} ("private" to toggle)'
+    )
+    secure_print()
+    show_tree()
+    secure_print()
+
+
 def spec() -> None:
     global data, key, catalog
     key, catalog = password_prompt(spec_service_name)
-    # first_loop = True
+    first_loop = True
 
     command_history = InMemoryHistory()
 
@@ -636,21 +652,10 @@ def spec() -> None:
 
         _purge_overdue_spec_elements()
 
-        # if first_loop:
-        secure_print()
-        secure_print(
-            terminal_format("perora floating spec", [Colors.BOLD, Colors.ULTRA_GROOVY])
-        )
-        private_mode_on_off_statement = (
-            terminal_format("on", [Colors.OKGREEN])
-            if data["privateMode"]
-            else terminal_format("off", [Colors.SUPER_WARNING, Colors.BOLD])
-        )
-        secure_print(
-            f'private mode {private_mode_on_off_statement} ("private" to toggle)'
-        )
-        show_tree()
-        # first_loop = False
+        if first_loop:
+            print_header()
+            first_loop = False
+
         specs = data["specs"]
         spec_element_slugs = [k for k in specs.keys() if
                               (not "private" in specs[k] or not specs[k]["private"]) or not data["privateMode"]]
@@ -688,7 +693,12 @@ def spec() -> None:
         )
         add_lines()
         clear_term()
+
+        print_header()
+        # We do things in this order so command output shows up below the header
         run_command(command)
+        # Add space between the command output and the prompt
+        secure_print()
 
         _save_data(data, data_file_path, key)
         _save_due_map_from_data(data, due_map_file_path)
