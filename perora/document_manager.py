@@ -259,9 +259,9 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
         files_argument = f"-O {files_argument}"
         # Account for Vim's "2 files to edit" output
         add_lines()
-    else:
+    # else:
         # TODO: Find out why this is needed
-        add_lines(-1)
+        # add_lines(-1)
 
     command = f'vi + "+{vi_secure_settings_string}" {files_argument}'
 
@@ -274,7 +274,7 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
         # Should only be on file that's being closed
         _remove_temp_file(info["temp_file"], info["temp_file_path"])
 
-    clear_term()
+    # clear_term()
 
 
 def edit_document(service_name: str, name: str, key: str) -> None:
