@@ -520,8 +520,17 @@ def _save_data(data: dict, data_path: str, key: str) -> None:
 
 def _save_due_map_from_data(data: dict, due_map_path: str) -> None:
     due_map = {"dueDates": {}}
+    sensitive_count = 0
     for k, v in sorted(data["specs"].items()):
-        due_map["dueDates"][k] = v["due"]
+        # Obscure name regardless of application private mode
+        private = "private" not in v or not v["private"]
+        if private:
+            # Each key must be unique
+            due_key = f"<sensitive_{sensitive_count}>"
+            sensitive_count += 1
+        else:
+            due_key = k
+        due_map["dueDates"][due_key] = v["due"]
 
     _save_due_map(due_map, due_map_path)
 
