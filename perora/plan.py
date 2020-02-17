@@ -62,7 +62,7 @@ def format_date_range(date_1: datetime.date, date_2: datetime.date) -> str:
 def whats_the_plan(date_str: str = None) -> None:
     key, catalog = password_prompt(plan_service_name)
     date = (
-        datetime.now() if date_str is None else datetime.strptime(date_str, "%m.%d.%y")
+        datetime.now() if date_str is None else datetime.strptime(date_str, "%m.%d.%Y")
     )
 
     life_plan_key = "life"
