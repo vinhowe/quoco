@@ -523,7 +523,7 @@ def _save_due_map_from_data(data: dict, due_map_path: str) -> None:
     sensitive_count = 0
     for k, v in sorted(data["specs"].items()):
         # Obscure name regardless of application private mode
-        private = "private" not in v or not v["private"]
+        private = "private" in v and v["private"]
         if private:
             # Each key must be unique
             due_key = f"<sensitive_{sensitive_count}>"
