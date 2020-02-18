@@ -10,3 +10,5 @@ My scattered thoughts on how to navigate life productively.
 ![](screenshots/perora-spec.png)
 
 ### Journal
+
+### Plan
