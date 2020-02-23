@@ -235,7 +235,6 @@ def _command_review_spec_element(args_str: str = "") -> None:
         return
     slug = remove_outside_char(args[0]).lower()
 
-    date_str = None
     if len(args) > 1:
         date_str = args[1]
     else:
@@ -331,6 +330,18 @@ def _command_toggle_privacy(args_str: str = "") -> None:
             element["private"] = not element["private"]
 
 
+def _command_compare(args_str: str = ""):
+    args: List[str] = args_str.split(" ", 1)
+    if len(args) < 2:
+        secure_print("compare [path 1] [path 2]")
+        return
+
+    path_1 = args[0]
+    path_2 = args[1]
+
+    _edit_compare_specs(path_1, path_2)
+
+
 def _command_exit(args_str: str = "") -> None:
     secure_print("exiting...")
     clear_term()
@@ -369,6 +380,7 @@ commands = {
     "rev": _command_review_spec_element,
     "reviews": _command_reviews_spec_element,
     "private": _command_toggle_privacy,
+    "compare": _command_compare,
     # "tree": show_tree,
     # "ls": show_tree,
     "help": _command_help,
@@ -485,6 +497,12 @@ def _edit_spec_review_doc_side_by_side(spec_slug: str, date: str) -> None:
 
     review_slug = _review_slug(spec_slug, date)
     edit_documents(spec_service_name, [spec_slug, review_slug], key)
+
+
+def _edit_compare_specs(spec_slug_1, spec_slug_2) -> None:
+    global key
+
+    edit_documents(spec_service_name, [spec_slug_1, spec_slug_2], key)
 
 
 def _load_data(key: str) -> dict:
@@ -702,6 +720,7 @@ def spec() -> None:
                     "move": spec_element_slugs_completer,
                     "due": spec_element_slugs_completer,
                     "rename": spec_element_slugs_completer,
+                    "compare": spec_element_slugs_completer,
                     "private": spec_element_slugs_completer,
                     "about": None,
                     "new": spec_element_slugs_completer,
