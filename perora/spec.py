@@ -677,7 +677,7 @@ def spec() -> None:
         spec_element_slugs = [
             k
             for k in specs.keys()
-            if (not "private" in specs[k] or not specs[k]["private"])
+            if ("private" not in specs[k] or not specs[k]["private"])
                or not data["privateMode"]
         ]
         spec_element_slugs_completer = FuzzyWordCompleter(spec_element_slugs)
@@ -715,11 +715,10 @@ def spec() -> None:
         add_lines()
         clear_term()
 
-        print_header()
-        # We do things in this order so command output shows up below the header
+        secure_print()
         run_command(command)
         # Add space between the command output and the prompt
-        secure_print()
+        print_header()
 
         _save_data(data, data_file_path, key)
         _save_due_map_from_data(data, due_map_file_path)
