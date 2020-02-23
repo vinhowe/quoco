@@ -366,6 +366,7 @@ commands = {
     "due": _command_update_due,
     "about": _command_about,
     "review": _command_review_spec_element,
+    "rev": _command_review_spec_element,
     "reviews": _command_reviews_spec_element,
     "private": _command_toggle_privacy,
     # "tree": show_tree,
@@ -693,6 +694,7 @@ def spec() -> None:
             NestedCompleter.from_nested_dict(
                 {
                     "del": spec_element_slugs_completer,
+                    "rev": spec_element_reviews,
                     "review": spec_element_reviews,
                     "reviews": spec_element_slugs_completer,
                     "edit": spec_element_slugs_completer,
