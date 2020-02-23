@@ -703,7 +703,6 @@ def spec() -> None:
                     "private": spec_element_slugs_completer,
                     "about": None,
                     "new": spec_element_slugs_completer,
-                    "tree": None,
                     "exit": None,
                 }
             )
