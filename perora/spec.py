@@ -187,9 +187,11 @@ def _command_update_due(args_str: str = ""):
                 continue
             days_until_due = days_until_due_input
 
-    data["specs"][slug]["due"] = format_config_date(
-        datetime.now() + timedelta(days=days_until_due)
-    )
+    due_date = datetime.now() + timedelta(days=days_until_due)
+
+    data["specs"][slug]["due"] = format_config_date(due_date)
+
+    secure_print(f"next due: {format_pretty_date(due_date)}")
 
 
 def _today_date_str() -> str:
@@ -402,7 +404,7 @@ def spec_item_listing(spec, show_due_info=True, format=True) -> str:
     )
     indent = spec["path"].count("/")
     due_delta = (parse_config_date(spec["due"]) - datetime.today().date()).days
-    due_info = f"[\u23F0 {due_info_str(due_delta, due_delta >= -7)}]"
+    due_info = f"[\u23F0 {_due_info_str(due_delta, due_delta >= -7)}]"
     max_name_length = 60
     # https://stackoverflow.com/questions/2872512/python-truncate-a-long-string/39017530
     if "private" in spec and spec["private"] and data["privateMode"]:
@@ -551,6 +553,10 @@ def check_duplicates(test_list: List[any]) -> bool:
     return True
 
 
+def format_pretty_date(date: datetime) -> str:
+    return date.strftime("%b %d %Y").lower()
+
+
 def format_config_date(date: datetime) -> str:
     return date.strftime("%Y-%m-%d")
 
@@ -565,15 +571,17 @@ def due_today(spec: dict) -> bool:
     return due_date == datetime.today().date()
 
 
-def due_info_str(remaining_days: int, formatting=True) -> str:
+def _due_info_str(remaining_days: int, formatting=True) -> str:
     special_cases = {
         -1: (f"YESTERDAY", [Colors.SUPER_WARNING, Colors.BOLD]),
         0: (f"TODAY", [Colors.WARNING, Colors.BOLD]),
         1: (f"TOMORROW", [Colors.OKGREEN]),
     }
 
+    due_date_str = format_pretty_date(datetime.today() + timedelta(days=remaining_days))
+
     if remaining_days in special_cases:
-        return (
+        special_case_str = (
             special_cases[remaining_days][0]
             if not formatting
             else terminal_format(
@@ -581,7 +589,9 @@ def due_info_str(remaining_days: int, formatting=True) -> str:
             )
         )
 
-    # We do abs(remaining_days) because the if check for negative values will add "ago" to the end
+        return f"{special_case_str} -> {due_date_str}"
+
+        # We do abs(remaining_days) because the if check for negative values will add "ago" to the end
     remaining_days_str = f"{abs(remaining_days)}d"
 
     if remaining_days < 0:
@@ -600,7 +610,7 @@ def due_info_str(remaining_days: int, formatting=True) -> str:
             else terminal_format(remaining_days_str, [Colors.OKGREEN])
         )
 
-    return remaining_days_str
+    return f"{remaining_days_str} -> {due_date_str}"
 
 
 def print_tree(data: dict) -> None:
@@ -639,9 +649,7 @@ def print_header() -> None:
         if data["privateMode"]
         else terminal_format("off", [Colors.SUPER_WARNING, Colors.BOLD])
     )
-    secure_print(
-        f'private mode {private_mode_on_off_statement} ("private" to toggle)'
-    )
+    secure_print(f'private mode {private_mode_on_off_statement} ("private" to toggle)')
     secure_print()
     show_tree()
     secure_print()
@@ -666,8 +674,12 @@ def spec() -> None:
             first_loop = False
 
         specs = data["specs"]
-        spec_element_slugs = [k for k in specs.keys() if
-                              (not "private" in specs[k] or not specs[k]["private"]) or not data["privateMode"]]
+        spec_element_slugs = [
+            k
+            for k in specs.keys()
+            if (not "private" in specs[k] or not specs[k]["private"])
+               or not data["privateMode"]
+        ]
         spec_element_slugs_completer = FuzzyWordCompleter(spec_element_slugs)
         spec_element_reviews = {}
         for slug in spec_element_slugs:
@@ -787,7 +799,7 @@ def review_reminder():
         body += f"{len(overdue)} OVERDUE:\n"
         for slug in overdue:
             date = due_dates_map[slug]
-            body += f"- {slug} {due_info_str(date, False)}\n"
+            body += f"- {slug} {_due_info_str(date, False)}\n"
         body += "\n"
 
     if len(due) > 0:
@@ -805,7 +817,7 @@ def review_reminder():
         for slug in due_soon:
             date = due_dates_map[slug]
             # No need to specify date when due, all in this list are due today
-            body += f"- {slug} {due_info_str(date, False)}\n"
+            body += f"- {slug} {_due_info_str(date, False)}\n"
 
     subject_line = "perora spec reviews"
 
