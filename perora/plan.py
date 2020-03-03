@@ -73,7 +73,7 @@ def whats_the_plan(args: str = None) -> None:
     if len(plan_args) > 0:
         plan_args = plan_args.replace("k", "d w m y l")
 
-    plan_args.split(" ")
+    plan_args = plan_args.split(" ")
 
     date = (
         datetime.strptime(arg_parts[1], "%m.%d.%Y")
@@ -102,10 +102,9 @@ def whats_the_plan(args: str = None) -> None:
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, day_plan_key, key)
 
-            if day_plan_key in names_to_open:
-                return
+            if day_plan_key not in names_to_open:
+                names_to_open.append(day_plan_key)
 
-            names_to_open.append(day_plan_key)
         elif plan_arg[0] == "w":
             current_plan_date = current_plan_date + timedelta(weeks=signed_difference)
 
@@ -129,10 +128,9 @@ def whats_the_plan(args: str = None) -> None:
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, day_plan_key, key)
 
-            if week_plan_key in names_to_open:
-                return
+            if week_plan_key not in names_to_open:
+                names_to_open.append(week_plan_key)
 
-            names_to_open.append(week_plan_key)
         elif plan_arg[0] == "m":
             current_plan_date = current_plan_date + relativedelta(months=signed_difference)
             month_plan_key = f"month_{current_plan_date.month}_{current_plan_date.year}"
@@ -141,10 +139,9 @@ def whats_the_plan(args: str = None) -> None:
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, month_plan_key, key)
 
-            if month_plan_key in names_to_open:
-                return
+            if month_plan_key not in names_to_open:
+                names_to_open.append(month_plan_key)
 
-            names_to_open.append(month_plan_key)
         elif plan_arg[0] == "y":
             current_plan_date = current_plan_date + relativedelta(years=signed_difference)
 
@@ -154,10 +151,9 @@ def whats_the_plan(args: str = None) -> None:
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, year_plan_key, key)
 
-            if year_plan_key in names_to_open:
-                return
+            if year_plan_key not in names_to_open:
+                names_to_open.append(year_plan_key)
 
-            names_to_open.append(year_plan_key)
         elif plan_arg[0] == "l":
             life_plan_key = "life"
             if not document_in_catalog(plan_service_name, life_plan_key, key):
@@ -165,10 +161,8 @@ def whats_the_plan(args: str = None) -> None:
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, life_plan_key, key)
 
-            if life_plan_key in names_to_open:
-                return
-
-            names_to_open.append(life_plan_key)
+            if life_plan_key not in names_to_open:
+                names_to_open.append(life_plan_key)
 
 
     # life_plan_key = "life"
