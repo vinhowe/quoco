@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from dateutil.relativedelta import *
 
 from perora.document_manager import (
     document_in_catalog,
@@ -59,48 +60,135 @@ def format_date_range(date_1: datetime.date, date_2: datetime.date) -> str:
     return f"{date_1_str}-{date_2_str}{shared_str}"
 
 
-def whats_the_plan(date_str: str = None) -> None:
+def whats_the_plan(args: str = None) -> None:
     key, catalog = password_prompt(plan_service_name)
-    date = (
-        datetime.now() if date_str is None else datetime.strptime(date_str, "%m.%d.%Y")
+    args = (
+        f"d w m y l -- {datetime.now().strftime('%m.%d.%Y')}" if args is None else args
     )
 
-    life_plan_key = "life"
-    if not document_in_catalog(plan_service_name, life_plan_key, key):
-        pretty_name = f"life plan"
-        header = f"# {pretty_name}\n\n\n"
-        write_document(header, plan_service_name, life_plan_key, key)
+    arg_parts = args.split(" -- ")
 
-    year_plan_key = f"year_{date.year}"
-    if not document_in_catalog(plan_service_name, year_plan_key, key):
-        pretty_name = f"year plan: {date.year}"
-        header = f"# {pretty_name}\n\n\n"
-        write_document(header, plan_service_name, year_plan_key, key)
+    plan_args = arg_parts[0]
 
-    month_plan_key = f"month_{date.month}_{date.year}"
-    if not document_in_catalog(plan_service_name, month_plan_key, key):
-        pretty_name = f"month plan: {date.strftime('%b').lower()} {date.year}"
-        header = f"# {pretty_name}\n\n\n"
-        write_document(header, plan_service_name, month_plan_key, key)
+    if len(plan_args) > 0:
+        plan_args = plan_args.replace("k", "d w m y l")
 
-    week = week_number_of_month(date)
-    week_plan_key = f"week_{week}_{date.month}_{date.year}"
-    if not document_in_catalog(plan_service_name, week_plan_key, key):
-        # Do some logic so that the week starts on Sunday
-        day_of_week = (date.weekday() + 1) if date.weekday() < 6 else 0
-        first_date = date - timedelta(days=day_of_week)
-        last_date = date + timedelta(days=6 - day_of_week)
-        date_range_str = format_date_range(first_date, last_date)
-        pretty_name = f"week plan: {date_range_str}"
-        header = f"# {pretty_name}\n\n\n"
-        write_document(header, plan_service_name, week_plan_key, key)
+    plan_args.split(" ")
 
-    day_plan_key = f"day_{date.day}_{date.month}_{date.year}"
-    if not document_in_catalog(plan_service_name, day_plan_key, key):
-        pretty_name = f"day plan: {date.strftime('%a').lower()} {date.day} {date.strftime('%b').lower()} {date.year}"
-        header = f"# {pretty_name}\n\n\n"
-        write_document(header, plan_service_name, day_plan_key, key)
+    date = (
+        datetime.strptime(arg_parts[1], "%m.%d.%Y")
+        if len(arg_parts) > 1
+        else datetime.now()
+    )
 
-    names_to_open = [day_plan_key, week_plan_key, month_plan_key, year_plan_key, life_plan_key]
+    names_to_open = []
+
+    for plan_arg in plan_args:
+        current_plan_date = date
+        signed_difference = 0
+
+        if len(plan_arg) > 1 and plan_arg[1] in ["+", "-"]:
+            operator = plan_arg[1]
+            # We hope plan_arg[2:] is a number but we don't really check
+            signed_difference = eval(f"{operator}{plan_arg[2:]}")
+
+        if plan_arg[0] == "d":
+            current_plan_date = current_plan_date + timedelta(days=signed_difference)
+
+            day_plan_key = f"day_{current_plan_date.day}_{current_plan_date.month}_{current_plan_date.year}"
+
+            if not document_in_catalog(plan_service_name, day_plan_key, key):
+                pretty_name = f"day plan: {current_plan_date.strftime('%a').lower()} {current_plan_date.day} {current_plan_date.strftime('%b').lower()} {current_plan_date.year} "
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, day_plan_key, key)
+            names_to_open.append(day_plan_key)
+        elif plan_arg[0] == "w":
+            current_plan_date = current_plan_date + timedelta(weeks=signed_difference)
+
+            week = week_number_of_month(current_plan_date)
+
+            week_plan_key = f"week_{week}_{current_plan_date.month}_{current_plan_date.year}"
+            if not document_in_catalog(plan_service_name, week_plan_key, key):
+                # Do some logic so that the week starts on Sunday
+                day_of_week = (current_plan_date.weekday() + 1) if current_plan_date.weekday() < 6 else 0
+                first_date = current_plan_date - timedelta(days=day_of_week)
+                last_date = current_plan_date + timedelta(days=6 - day_of_week)
+                date_range_str = format_date_range(first_date, last_date)
+                pretty_name = f"week plan: {date_range_str}"
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, week_plan_key, key)
+
+            day_plan_key = f"day_{current_plan_date.day}_{current_plan_date.month}_{current_plan_date.year}"
+
+            if not document_in_catalog(plan_service_name, day_plan_key, key):
+                pretty_name = f"day plan: {current_plan_date.strftime('%a').lower()} {current_plan_date.day} {current_plan_date.strftime('%b').lower()} {current_plan_date.year} "
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, day_plan_key, key)
+
+            names_to_open.append(week_plan_key)
+        elif plan_arg[0] == "m":
+            current_plan_date = current_plan_date + relativedelta(months=signed_difference)
+            month_plan_key = f"month_{current_plan_date.month}_{current_plan_date.year}"
+            if not document_in_catalog(plan_service_name, month_plan_key, key):
+                pretty_name = f"month plan: {current_plan_date.strftime('%b').lower()} {current_plan_date.year}"
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, month_plan_key, key)
+
+            names_to_open.append(month_plan_key)
+        elif plan_arg[0] == "y":
+            current_plan_date = current_plan_date + relativedelta(years=signed_difference)
+
+            year_plan_key = f"year_{current_plan_date.year}"
+            if not document_in_catalog(plan_service_name, year_plan_key, key):
+                pretty_name = f"year plan: {current_plan_date.year}"
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, year_plan_key, key)
+            names_to_open.append(year_plan_key)
+        elif plan_arg[0] == "l":
+            life_plan_key = "life"
+            if not document_in_catalog(plan_service_name, life_plan_key, key):
+                pretty_name = f"life plan"
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, life_plan_key, key)
+            names_to_open.append(life_plan_key)
+
+
+    # life_plan_key = "life"
+    # if not document_in_catalog(plan_service_name, life_plan_key, key):
+    #     pretty_name = f"life plan"
+    #     header = f"# {pretty_name}\n\n\n"
+    #     write_document(header, plan_service_name, life_plan_key, key)
+    #
+    # year_plan_key = f"year_{date.year}"
+    # if not document_in_catalog(plan_service_name, year_plan_key, key):
+    #     pretty_name = f"year plan: {date.year}"
+    #     header = f"# {pretty_name}\n\n\n"
+    #     write_document(header, plan_service_name, year_plan_key, key)
+    #
+    # month_plan_key = f"month_{date.month}_{date.year}"
+    # if not document_in_catalog(plan_service_name, month_plan_key, key):
+    #     pretty_name = f"month plan: {date.strftime('%b').lower()} {date.year}"
+    #     header = f"# {pretty_name}\n\n\n"
+    #     write_document(header, plan_service_name, month_plan_key, key)
+    #
+    # week = week_number_of_month(date)
+    # week_plan_key = f"week_{week}_{date.month}_{date.year}"
+    # if not document_in_catalog(plan_service_name, week_plan_key, key):
+    #     # Do some logic so that the week starts on Sunday
+    #     day_of_week = (date.weekday() + 1) if date.weekday() < 6 else 0
+    #     first_date = date - timedelta(days=day_of_week)
+    #     last_date = date + timedelta(days=6 - day_of_week)
+    #     date_range_str = format_date_range(first_date, last_date)
+    #     pretty_name = f"week plan: {date_range_str}"
+    #     header = f"# {pretty_name}\n\n\n"
+    #     write_document(header, plan_service_name, week_plan_key, key)
+    #
+    # names_to_open = [
+    #     day_plan_key,
+    #     week_plan_key,
+    #     month_plan_key,
+    #     year_plan_key,
+    #     life_plan_key,
+    # ]
 
     edit_documents(plan_service_name, names_to_open, key)
