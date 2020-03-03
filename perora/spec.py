@@ -248,6 +248,7 @@ def _command_review_spec_element(args_str: str = "") -> None:
     _edit_spec_review_doc_side_by_side(slug, date_str)
     if not len(args) > 1:
         _command_update_due(slug)
+        _command_update_commitment(slug)
 
 
 def _command_reviews_spec_element(args_str: str = "") -> None:
@@ -308,6 +309,38 @@ def _command_rename_spec_element(args_str: str = "") -> None:
     new_name = args[1]
 
     data["specs"][path]["name"] = new_name
+
+
+def _command_update_commitment(args_str: str = "") -> None:
+    global key, data
+    args: List[str] = args_str.split(" ", 1)
+
+    if len(args) < 1:
+        secure_print("commit [path]")
+        return
+
+    slug = args[0]
+
+    element = data["specs"][slug]
+    date = format_pretty_date(parse_config_date(element["due"]))
+
+    # Force user to "formally" commit rather than just being able to type
+    #  something like `commit [slug]` and have it toggle the committed status
+    #  on the spec with that slug
+    committed = None
+    while committed is None:
+        committed_response_input = input(
+            f"Do you commit to follow the specifications laid out in `{slug}` to the best of your abilities until {date}? [y/n] "
+        )
+        add_lines()
+        if committed_response_input.lower() not in ["y", "n"]:
+            secure_print(
+                f"{Colors.ENDC + Colors.SUPER_WARNING}invalid input{Colors.ENDC}"
+            )
+            continue
+        committed = committed_response_input.lower() == "y"
+
+    element["committed"] = committed
 
 
 def _command_toggle_privacy(args_str: str = "") -> None:
@@ -381,6 +414,7 @@ commands = {
     "reviews": _command_reviews_spec_element,
     "private": _command_toggle_privacy,
     "compare": _command_compare,
+    "commit": _command_update_commitment,
     # "tree": show_tree,
     # "ls": show_tree,
     "help": _command_help,
@@ -419,6 +453,7 @@ def spec_item_listing(spec, show_due_info=True, format=True) -> str:
     due_delta = (parse_config_date(spec["due"]) - datetime.today().date()).days
     due_info = f"[\u23F0 {_due_info_str(due_delta, due_delta >= -7)}]"
     max_name_length = 60
+    committed = "committed" in spec and spec["committed"]
     # https://stackoverflow.com/questions/2872512/python-truncate-a-long-string/39017530
     if "private" in spec and spec["private"] and data["privateMode"]:
         path = "<sensitive>"
@@ -428,18 +463,22 @@ def spec_item_listing(spec, show_due_info=True, format=True) -> str:
         name = spec["name"][:max_name_length] + (
             spec["name"][max_name_length:] and "..."
         )
-    if due_delta >= -7 and format:
+    if due_delta >= -7 and format and committed:
         path = terminal_format(path, [Colors.BOLD])
         name = terminal_format(name, [Colors.ULTRA_GROOVY])
 
-    if show_due_info:
+    if show_due_info and committed:
         bullet = "  " * indent + f"--> {name} ({path})"
         inactive_extra_length = inactive_extra_length if due_delta < -7 else 0
         bullet = f"{bullet} {due_info.rjust(longest_item_length + due_info_padding - inactive_extra_length + len(due_info) - len(bullet))}"
+    elif not committed:
+        bullet = "  " * indent + f"--> {name} ({path}) [uncommitted]"
     else:
         bullet = "  " * indent + f"--> {name} ({path})"
 
-    if due_delta < -7 and format:
+    if (due_delta < -7 and format) or (
+        "committed" not in spec or not spec["committed"]
+    ):
         bullet = terminal_format(bullet, [Colors.INACTIVE])
 
     return bullet
@@ -551,6 +590,7 @@ def _save_due_map_from_data(data: dict, due_map_path: str) -> None:
             sensitive_count += 1
         else:
             due_key = k
+        
         due_map["dueDates"][due_key] = v["due"]
 
     _save_due_map(due_map, due_map_path)
@@ -580,7 +620,7 @@ def format_config_date(date: datetime) -> str:
     return date.strftime("%Y-%m-%d")
 
 
-def parse_config_date(date_str: str) -> datetime.date:
+def parse_config_date(date_str: str) -> datetime:
     due_date_numbers = map(lambda n: int(n), date_str.split("-"))
     return datetime(*due_date_numbers).date()
 
@@ -723,6 +763,7 @@ def spec() -> None:
                     "due": spec_element_slugs_completer,
                     "rename": spec_element_slugs_completer,
                     "compare": spec_element_slugs_completer,
+                    "commit": spec_element_slugs_completer,
                     "private": spec_element_slugs_completer,
                     "about": None,
                     "new": spec_element_slugs_completer,
