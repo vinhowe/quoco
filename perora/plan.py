@@ -62,16 +62,20 @@ def format_date_range(date_1: datetime.date, date_2: datetime.date) -> str:
 
 def whats_the_plan(args: str = None) -> None:
     key, catalog = password_prompt(plan_service_name)
+    default_layout = "j c d"
     args = (
-        f"d w m y l -- {datetime.now().strftime('%m.%d.%Y')}" if args is None else args
+        f"{default_layout} -- {datetime.now().strftime('%m.%d.%Y')}"
+        if args is None
+        else args
     )
 
     arg_parts = args.split(" -- ")
 
     plan_args = arg_parts[0]
 
+    # Shortcut for default layout--redundant by itself but useful when comparing plans from past/future dates
     if len(plan_args) > 0:
-        plan_args = plan_args.replace("k", "d w m y l")
+        plan_args = plan_args.replace("k", default_layout)
 
     plan_args = plan_args.split(" ")
 
@@ -92,7 +96,36 @@ def whats_the_plan(args: str = None) -> None:
             # We hope plan_arg[2:] is a number but we don't really check
             signed_difference = eval(f"{operator}{plan_arg[2:]}")
 
-        if plan_arg[0] == "d":
+        # Cache--anything you need to get our of your head that is an organizational matter
+        if plan_arg[0] == "c":
+            current_plan_date = current_plan_date + timedelta(days=signed_difference)
+
+            cache_key = f"cache_{current_plan_date.day}_{current_plan_date.month}_{current_plan_date.year}"
+
+            if not document_in_catalog(plan_service_name, cache_key, key):
+                pretty_name = f"cache: {current_plan_date.strftime('%a').lower()} {current_plan_date.day} {current_plan_date.strftime('%b').lower()} {current_plan_date.year} "
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, cache_key, key)
+
+            if cache_key not in names_to_open:
+                names_to_open.append(cache_key)
+
+        # Journal--non-organizational dump
+        # Should be noted that this makes Perora journal obsolete
+        elif plan_arg[0] == "j":
+            current_plan_date = current_plan_date + timedelta(days=signed_difference)
+
+            journal_entry_key = f"journal_{current_plan_date.day}_{current_plan_date.month}_{current_plan_date.year}"
+
+            if not document_in_catalog(plan_service_name, journal_entry_key, key):
+                pretty_name = f"journal: {current_plan_date.strftime('%a').lower()} {current_plan_date.day} {current_plan_date.strftime('%b').lower()} {current_plan_date.year} "
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, journal_entry_key, key)
+
+            if journal_entry_key not in names_to_open:
+                names_to_open.append(journal_entry_key)
+
+        elif plan_arg[0] == "d":
             current_plan_date = current_plan_date + timedelta(days=signed_difference)
 
             day_plan_key = f"day_{current_plan_date.day}_{current_plan_date.month}_{current_plan_date.year}"
@@ -110,10 +143,16 @@ def whats_the_plan(args: str = None) -> None:
 
             week = week_number_of_month(current_plan_date)
 
-            week_plan_key = f"week_{week}_{current_plan_date.month}_{current_plan_date.year}"
+            week_plan_key = (
+                f"week_{week}_{current_plan_date.month}_{current_plan_date.year}"
+            )
             if not document_in_catalog(plan_service_name, week_plan_key, key):
                 # Do some logic so that the week starts on Sunday
-                day_of_week = (current_plan_date.weekday() + 1) if current_plan_date.weekday() < 6 else 0
+                day_of_week = (
+                    (current_plan_date.weekday() + 1)
+                    if current_plan_date.weekday() < 6
+                    else 0
+                )
                 first_date = current_plan_date - timedelta(days=day_of_week)
                 last_date = current_plan_date + timedelta(days=6 - day_of_week)
                 date_range_str = format_date_range(first_date, last_date)
@@ -132,7 +171,9 @@ def whats_the_plan(args: str = None) -> None:
                 names_to_open.append(week_plan_key)
 
         elif plan_arg[0] == "m":
-            current_plan_date = current_plan_date + relativedelta(months=signed_difference)
+            current_plan_date = current_plan_date + relativedelta(
+                months=signed_difference
+            )
             month_plan_key = f"month_{current_plan_date.month}_{current_plan_date.year}"
             if not document_in_catalog(plan_service_name, month_plan_key, key):
                 pretty_name = f"month plan: {current_plan_date.strftime('%b').lower()} {current_plan_date.year}"
@@ -143,7 +184,9 @@ def whats_the_plan(args: str = None) -> None:
                 names_to_open.append(month_plan_key)
 
         elif plan_arg[0] == "y":
-            current_plan_date = current_plan_date + relativedelta(years=signed_difference)
+            current_plan_date = current_plan_date + relativedelta(
+                years=signed_difference
+            )
 
             year_plan_key = f"year_{current_plan_date.year}"
             if not document_in_catalog(plan_service_name, year_plan_key, key):
@@ -163,7 +206,6 @@ def whats_the_plan(args: str = None) -> None:
 
             if life_plan_key not in names_to_open:
                 names_to_open.append(life_plan_key)
-
 
     # life_plan_key = "life"
     # if not document_in_catalog(plan_service_name, life_plan_key, key):
