@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.7
 import json
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Tuple
 
 import requests
 from prompt_toolkit import PromptSession
@@ -130,8 +130,8 @@ def _command_remove_spec_element(args_str: str = "") -> None:
         for _, v in data["specs"][slug]["reviews"].items():
             delete_document(spec_service_name, v["slug"], key)
 
-    # Data will be saved after every loop, but if we decide to change this, we should create a function for flushing
-    # as needed.
+    # Data will be saved after every loop, but if we decide to change this,
+    # we should create a function for flushing as needed.
     del data["specs"][slug]
 
     delete_document(spec_service_name, slug, key)
@@ -202,7 +202,7 @@ def _review_slug(spec_slug: str, date: str):
     return f"review--{date}--{spec_slug}"
 
 
-def _create_review_today_if_not_exist(slug):
+def _create_review_today_if_not_exist(slug) -> None:
     global key
     if "reviews" not in data["specs"][slug]:
         data["specs"][slug]["reviews"] = {}
@@ -426,7 +426,7 @@ def spec_item_listing(spec, show_due_info=True, format=True) -> str:
     else:
         path = spec["path"]
         name = spec["name"][:max_name_length] + (
-                spec["name"][max_name_length:] and "..."
+            spec["name"][max_name_length:] and "..."
         )
     if due_delta >= -7 and format:
         path = terminal_format(path, [Colors.BOLD])
@@ -445,7 +445,7 @@ def spec_item_listing(spec, show_due_info=True, format=True) -> str:
     return bullet
 
 
-def compute_longest_item_length():
+def compute_longest_item_length() -> int:
     longest_length = 0
     for key, element in data["specs"].items():
         element["path"] = key
@@ -610,7 +610,8 @@ def _due_info_str(remaining_days: int, formatting=True) -> str:
 
         return f"{special_case_str} -> {due_date_str}"
 
-        # We do abs(remaining_days) because the if check for negative values will add "ago" to the end
+        # We do abs(remaining_days) because the if check for negative values
+        # will add "ago" to the end
     remaining_days_str = f"{abs(remaining_days)}d"
 
     if remaining_days < 0:
@@ -639,7 +640,7 @@ def print_tree(data: dict) -> None:
     print_element_tree(display_tree)
 
 
-def get_prompt_text():
+def get_prompt_text() -> List[Tuple[str, str]]:
     input_mode_map = {
         InputMode.INSERT: ("bg:ansigreen fg:white bold", "[I]"),
         InputMode.NAVIGATION: ("bg:ansired fg:white bold", "[N]"),
@@ -647,8 +648,9 @@ def get_prompt_text():
         InputMode.INSERT_MULTIPLE: ("bg:ansigreen fg:white bold", "[II]"),
     }
     input_mode = input_mode_map[get_app().vi_state.input_mode]
-    # Make escape key register instantly--this is hacky but I don't want to make a full-fledged Prompt Toolkit
-    # Application until I absolutely have to
+    # Make escape key register instantly--this is hacky but I don't want to
+    # make a full-fledged Prompt Toolkit Application until I absolutely have
+    # to
     get_app().ttimeoutlen = 0
     # input_mode = 'I' if get_app().vi_state.input_mode == InputMode.INSERT
     return [
@@ -697,7 +699,7 @@ def spec() -> None:
             k
             for k in specs.keys()
             if ("private" not in specs[k] or not specs[k]["private"])
-               or not data["privateMode"]
+            or not data["privateMode"]
         ]
         spec_element_slugs_completer = FuzzyWordCompleter(spec_element_slugs)
         spec_element_reviews = {}
@@ -745,7 +747,7 @@ def spec() -> None:
 
 
 def post_email(
-        domain, api_key, from_addr_name, from_name, to_addr, subject_line, body
+    domain, api_key, from_addr_name, from_name, to_addr, subject_line, body
 ) -> requests.Response:
     response = requests.post(
         f"https://api.mailgun.net/v3/{domain}/messages",
@@ -760,7 +762,7 @@ def post_email(
     return response
 
 
-def review_reminder():
+def review_reminder() -> None:
     due_map_data = _load_due_map()
     working_data = due_map_data.copy()
 
@@ -811,9 +813,11 @@ def review_reminder():
     # BIG TODO TODO TODO TODO TODO TODO TODO TODO
     # TODO: TODO: Generalize instead of repeating code here
     if len(overdue) > 0:
-        # elements_label = pluralize("element", "elements", len(overdue)).upper()
+        # elements_label = pluralize("element", "elements",
+        # len(overdue)).upper()
         body += (
-            f"Note: spec elements become inactive after {inactive_after_days} days.\n\n"
+            f"Note: spec elements become inactive after"
+            f"{inactive_after_days} days.\n\n"
         )
         body += f"{len(overdue)} OVERDUE:\n"
         for slug in overdue:
@@ -825,7 +829,6 @@ def review_reminder():
         # elements_label = pluralize("element", "elements", len(due))
         body += f"{len(due)} due today:\n"
         for slug in due:
-            date = due_dates_map[slug]
             # No need to specify date when due, all in this list are due today
             body += f"- {slug}\n"
         body += "\n"
