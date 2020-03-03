@@ -101,6 +101,10 @@ def whats_the_plan(args: str = None) -> None:
                 pretty_name = f"day plan: {current_plan_date.strftime('%a').lower()} {current_plan_date.day} {current_plan_date.strftime('%b').lower()} {current_plan_date.year} "
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, day_plan_key, key)
+
+            if day_plan_key in names_to_open:
+                return
+
             names_to_open.append(day_plan_key)
         elif plan_arg[0] == "w":
             current_plan_date = current_plan_date + timedelta(weeks=signed_difference)
@@ -125,6 +129,9 @@ def whats_the_plan(args: str = None) -> None:
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, day_plan_key, key)
 
+            if week_plan_key in names_to_open:
+                return
+
             names_to_open.append(week_plan_key)
         elif plan_arg[0] == "m":
             current_plan_date = current_plan_date + relativedelta(months=signed_difference)
@@ -133,6 +140,9 @@ def whats_the_plan(args: str = None) -> None:
                 pretty_name = f"month plan: {current_plan_date.strftime('%b').lower()} {current_plan_date.year}"
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, month_plan_key, key)
+
+            if month_plan_key in names_to_open:
+                return
 
             names_to_open.append(month_plan_key)
         elif plan_arg[0] == "y":
@@ -143,6 +153,10 @@ def whats_the_plan(args: str = None) -> None:
                 pretty_name = f"year plan: {current_plan_date.year}"
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, year_plan_key, key)
+
+            if year_plan_key in names_to_open:
+                return
+
             names_to_open.append(year_plan_key)
         elif plan_arg[0] == "l":
             life_plan_key = "life"
@@ -150,6 +164,10 @@ def whats_the_plan(args: str = None) -> None:
                 pretty_name = f"life plan"
                 header = f"# {pretty_name}\n\n\n"
                 write_document(header, plan_service_name, life_plan_key, key)
+
+            if life_plan_key in names_to_open:
+                return
+
             names_to_open.append(life_plan_key)
 
 
