@@ -62,7 +62,7 @@ def format_date_range(date_1: datetime.date, date_2: datetime.date) -> str:
 
 def whats_the_plan(args: str = None) -> None:
     key, catalog = password_prompt(plan_service_name)
-    default_layout = "j c d"
+    default_layout = "j c d c+1"
     args = (
         f"{default_layout} -- {datetime.now().strftime('%m.%d.%Y')}"
         if args is None
