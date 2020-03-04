@@ -63,6 +63,7 @@ def format_date_range(date_1: datetime.date, date_2: datetime.date) -> str:
 def whats_the_plan(args: str = None) -> None:
     key, catalog = password_prompt(plan_service_name)
     default_layout = "j c d c+1"
+    cache_triad_layout = "c-1 c c+1"
     args = (
         f"{default_layout} -- {datetime.now().strftime('%m.%d.%Y')}"
         if args is None
@@ -73,9 +74,11 @@ def whats_the_plan(args: str = None) -> None:
 
     plan_args = arg_parts[0]
 
-    # Shortcut for default layout--redundant by itself but useful when comparing plans from past/future dates
+    # Shortcut for default layout--redundant by itself but useful when
+    # comparing plans from past/future dates
     if len(plan_args) > 0:
         plan_args = plan_args.replace("k", default_layout)
+        plan_args = plan_args.replace("C", cache_triad_layout)
 
     plan_args = plan_args.split(" ")
 
