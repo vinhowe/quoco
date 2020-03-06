@@ -31,7 +31,7 @@ bucket = storage_client.bucket(bucket_name)
 max_retries = 1
 
 
-def file_exists(filename: str) -> bool:
+def remote_file_exists(filename: str) -> bool:
     blob = bucket.blob(filename)
     exists = None
     while exists is None:
@@ -121,7 +121,7 @@ def _gen_password_key(password: str, b64_salt: str = "LCzJKR9jSyc42WHBrTaUMg==")
 
 
 def _secure_delete_file(path_str) -> None:
-    if not file_exists(path_str):
+    if not remote_file_exists(path_str):
         return
 
     if which("shred") is not None:

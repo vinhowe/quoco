@@ -24,7 +24,7 @@ from perora.secure_fs_io import (
     _gen_password_key,
     default_salt,
     _secure_delete_file,
-    file_exists)
+    remote_file_exists)
 from perora.secure_term import clear_term, add_lines, secure_print
 
 catalog_file_name = "catalog"
@@ -190,7 +190,7 @@ def catalog_exists_or_create(service_name: str, salt: str) -> None:
     :param service_name:
     :param salt:
     """
-    if not file_exists(_documents_path(service_name, per_ext_file(catalog_file_name))):
+    if not remote_file_exists(_documents_path(service_name, per_ext_file(catalog_file_name))):
         secure_print(f"no catalog file found for {service_name} service")
         while True:
             password = getpass("enter a new password: ")
