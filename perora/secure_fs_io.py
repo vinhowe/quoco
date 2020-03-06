@@ -106,7 +106,7 @@ def remote_file_delete(filename: str) -> bool:
     blob: Blob = bucket.blob(filename)
     while True:
         try:
-            blob.exists(timeout=10)
+            blob.delete(timeout=10)
             return True
         except NotFound:
             return False
