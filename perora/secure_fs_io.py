@@ -11,6 +11,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from google.auth.exceptions import TransportError
 from google.cloud import storage
+from google.cloud.exceptions import NotFound
+from google.cloud.storage import Blob
 from requests import ReadTimeout
 
 from perora.fs_util import local_file_exists
@@ -98,6 +100,27 @@ def _secure_delete_file(path_str) -> None:
         subprocess.run(f"srm {path_str}", shell=True)
     else:
         os.remove(path_str)
+
+
+def remote_file_delete(filename: str) -> bool:
+    blob: Blob = bucket.blob(filename)
+    while True:
+        try:
+            blob.exists(timeout=10)
+            return True
+        except NotFound:
+            return False
+        except (TransportError, ReadTimeout):
+            secure_input("failed to delete file--press enter to retry")
+            continue
+
+
+def remote_file_touch(filename: str) -> bool:
+    result = None
+    while not result:
+        result = _upload_file(b"", filename)
+        if not result:
+            secure_input("failed to touch file--press enter to retry")
 
 
 def _gen_password_key(password: str, b64_salt: str = "LCzJKR9jSyc42WHBrTaUMg=="):

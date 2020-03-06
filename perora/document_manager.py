@@ -14,7 +14,6 @@ from cryptography.fernet import InvalidToken
 from perora.fs_util import (
     data_path,
     per_ext_file,
-    local_file_exists,
     mkdir_if_not_exist,
     touch_local_file,
 )
@@ -24,7 +23,7 @@ from perora.secure_fs_io import (
     _gen_password_key,
     default_salt,
     _secure_delete_file,
-    remote_file_exists)
+    remote_file_exists, remote_file_touch, remote_file_delete)
 from perora.secure_term import clear_term, add_lines, secure_print
 
 catalog_file_name = "catalog"
@@ -212,17 +211,17 @@ def lock_path(service_name: str) -> str:
 
 
 def quit_if_lock_exists(service_name: str) -> None:
-    if local_file_exists(lock_path(service_name)):
+    if remote_file_exists(lock_path(service_name)):
         secure_print(f"another instance of {service_name} service is running")
         exit(1)
 
 
 def create_lock(service_name: str) -> None:
-    touch_local_file(lock_path(service_name))
+    remote_file_touch(lock_path(service_name))
 
 
 def release_lock(service_name: str) -> None:
-    _secure_delete_file(lock_path(service_name))
+    remote_file_delete(lock_path(service_name))
 
 
 def open_service_interactive(service_name: str, salt: str = default_salt):
