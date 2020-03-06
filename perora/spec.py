@@ -26,7 +26,8 @@ from perora.fs_util import data_path, per_ext_file, local_file_exists
 from perora.secure_fs_io import (
     _read_decrypt_file,
     _write_encrypt_file,
-    remote_file_exists)
+    remote_file_exists,
+)
 from perora.secure_term import secure_print, add_lines, clear_term, secure_input
 from perora.util import Colors, terminal_format
 
@@ -580,8 +581,14 @@ def _save_due_map_from_data(data: dict, due_map_path: str) -> None:
     due_map = {"dueDates": {}}
     sensitive_count = 0
     for k, v in sorted(data["specs"].items()):
-        # Obscure name regardless of application private mode
+        # Hide name regardless of application private mode
         private = "private" in v and v["private"]
+
+        # Don't send reminders for specs that aren't committed
+        committed = "committed" in v and v["committed"]
+        if not committed:
+            continue
+
         if private:
             # Each key must be unique
             due_key = f"<sensitive_{sensitive_count}>"
