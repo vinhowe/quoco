@@ -1,3 +1,4 @@
+service-account.json
 venv-*
 reminder_config.json
 *.swp
@@ -11,6 +12,7 @@ spec/inactive/*.md
 .sj/
 .lj/
 data/
+data-old/
 perora/email_prototype.py
 perora/prompt_prototype.py
 plan/development/spec_groups_prototype.ipynb
