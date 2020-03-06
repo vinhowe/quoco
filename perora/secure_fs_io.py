@@ -2,38 +2,84 @@ import base64
 import os
 import subprocess
 import tempfile
+from io import BytesIO
 from shutil import which
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from google.api_core.timeout import ConstantTimeout
+from google.auth.exceptions import TransportError
+
+from google.cloud import storage
+from requests import ReadTimeout
 
 from perora.fs_util import file_exists
 
 # TODO: Generate a new salt for every fresh installation instead
+from perora.secure_term import add_lines, secure_print
+
 default_salt = "LCzJKR9jSyc42WHBrTaUMg=="
+
+service_account_json_path = "service-account.json"
+bucket_name = "perora-data"
+
+storage_client = storage.client.Client.from_service_account_json(
+    service_account_json_path
+)
+
+bucket = storage_client.bucket(bucket_name)
+
+max_retries = 1
+
+
+def _upload_file(content: bytes, filename: str) -> bool:
+    blob = bucket.blob(filename)
+    try:
+        string_buffer = BytesIO(content)
+        blob.upload_from_file(
+            file_obj=string_buffer,
+            size=len(content),
+            content_type="text/plain",
+            num_retries=max_retries
+        )
+        return True
+    except (ReadTimeout, TransportError):
+        # NO SECURE PRINT HERE
+        return False
+
+
+def _download_file(filename: str):
+    blob = bucket.blob(filename)
+    try:
+        return blob.download_as_string()
+    except TransportError:
+        return False
 
 
 def _read_decrypt_file(filename: str, key: str) -> bytes:
     fernet = Fernet(key)
-    # THIS SHOULD SAY "rb" in production
-    with open(filename, "rb") as encrypted_file:
-        # TODO: REMOVE--FOR DEBUGGING PURPOSES ONLY
-        return fernet.decrypt(encrypted_file.read())
-        # return bytes(encrypted_file.read(), encoding="utf8")
+    encrypted_file = None
+    while not encrypted_file:
+        encrypted_file = _download_file(filename)
+        if not encrypted_file:
+            secure_print("failed to download file--check your internet " "connection")
+            input("press enter to retry")
+            add_lines(1)
+    return fernet.decrypt(encrypted_file)
 
 
 def _write_encrypt_file(content: str, filename: str, key: str) -> None:
     fernet = Fernet(key)
-    encrypt_file = open(filename, "w+b")
-
     content_encrypted = fernet.encrypt(content.encode())
-    # TODO: REMOVE--FOR DEBUGGING PURPOSES ONLY
-    encrypt_file.write(content_encrypted)
-    # encrypt_file.write(bytes(content, encoding="utf8"))
-
-    encrypt_file.close()
+    result = None
+    while not result:
+        result = _upload_file(content_encrypted, filename)
+        if not result:
+            secure_print(f"failed to upload file--check your internet " f"connection")
+            input("press enter to retry")
+            add_lines(1)
 
 
 def _secure_delete_file(path_str) -> None:

@@ -312,6 +312,9 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
 
     subprocess.call(command, shell=True)
 
+    document_names = ", ".join([f"'{name}'" for name in names])
+    secure_print(f"uploading document(s): {document_names}")
+
     for info in documents_read_info:
         with open(info["temp_file_path"]) as read_temp_edit_file:
             write_document(read_temp_edit_file.read(), service_name, info["name"], key)
