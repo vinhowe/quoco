@@ -210,42 +210,4 @@ def whats_the_plan(args: str = None) -> None:
             if life_plan_key not in names_to_open:
                 names_to_open.append(life_plan_key)
 
-    # life_plan_key = "life"
-    # if not document_in_catalog(plan_service_name, life_plan_key, key):
-    #     pretty_name = f"life plan"
-    #     header = f"# {pretty_name}\n\n\n"
-    #     write_document(header, plan_service_name, life_plan_key, key)
-    #
-    # year_plan_key = f"year_{date.year}"
-    # if not document_in_catalog(plan_service_name, year_plan_key, key):
-    #     pretty_name = f"year plan: {date.year}"
-    #     header = f"# {pretty_name}\n\n\n"
-    #     write_document(header, plan_service_name, year_plan_key, key)
-    #
-    # month_plan_key = f"month_{date.month}_{date.year}"
-    # if not document_in_catalog(plan_service_name, month_plan_key, key):
-    #     pretty_name = f"month plan: {date.strftime('%b').lower()} {date.year}"
-    #     header = f"# {pretty_name}\n\n\n"
-    #     write_document(header, plan_service_name, month_plan_key, key)
-    #
-    # week = week_number_of_month(date)
-    # week_plan_key = f"week_{week}_{date.month}_{date.year}"
-    # if not document_in_catalog(plan_service_name, week_plan_key, key):
-    #     # Do some logic so that the week starts on Sunday
-    #     day_of_week = (date.weekday() + 1) if date.weekday() < 6 else 0
-    #     first_date = date - timedelta(days=day_of_week)
-    #     last_date = date + timedelta(days=6 - day_of_week)
-    #     date_range_str = format_date_range(first_date, last_date)
-    #     pretty_name = f"week plan: {date_range_str}"
-    #     header = f"# {pretty_name}\n\n\n"
-    #     write_document(header, plan_service_name, week_plan_key, key)
-    #
-    # names_to_open = [
-    #     day_plan_key,
-    #     week_plan_key,
-    #     month_plan_key,
-    #     year_plan_key,
-    #     life_plan_key,
-    # ]
-
     edit_documents(plan_service_name, names_to_open, key)
