@@ -27,7 +27,7 @@ from perora.secure_fs_io import (
     _read_decrypt_file,
     _write_encrypt_file,
 )
-from perora.secure_term import secure_print, add_lines, clear_term
+from perora.secure_term import secure_print, add_lines, clear_term, secure_input
 from perora.util import Colors, terminal_format
 
 spec_service_name = "spec"
@@ -177,9 +177,8 @@ def _command_update_due(args_str: str = ""):
         while days_until_due is None:
             try:
                 days_until_due_input = int(
-                    input(f"how many days until your next review of `{slug}`? ")
+                    secure_input(f"how many days until your next review of `{slug}`? ")
                 )
-                add_lines()
             except ValueError:
                 secure_print(
                     f"{Colors.ENDC + Colors.SUPER_WARNING}invalid input{Colors.ENDC}"
@@ -329,10 +328,9 @@ def _command_update_commitment(args_str: str = "") -> None:
     #  on the spec with that slug
     committed = None
     while committed is None:
-        committed_response_input = input(
+        committed_response_input = secure_input(
             f"Do you commit to follow the specifications laid out in `{slug}` to the best of your abilities until {date}? [y/n] "
         )
-        add_lines()
         if committed_response_input.lower() not in ["y", "n"]:
             secure_print(
                 f"{Colors.ENDC + Colors.SUPER_WARNING}invalid input{Colors.ENDC}"

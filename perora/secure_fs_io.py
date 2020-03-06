@@ -13,10 +13,10 @@ from google.auth.exceptions import TransportError
 from google.cloud import storage
 from requests import ReadTimeout
 
-# TODO: Generate a new salt for every fresh installation instead
 from perora.fs_util import local_file_exists
-from perora.secure_term import add_lines, secure_print
+from perora.secure_term import secure_input
 
+# TODO: Generate a new salt for every fresh installation instead
 default_salt = "LCzJKR9jSyc42WHBrTaUMg=="
 
 service_account_json_path = "service-account.json"
@@ -40,11 +40,7 @@ def file_exists(filename: str) -> bool:
         except (TransportError, ReadTimeout):
             pass
         if exists is None:
-            secure_print(
-                "failed to check if file exists--check your internet connection"
-            )
-            input("press enter to retry")
-            add_lines(1)
+            secure_input("failed to check if file exists--press enter to retry")
     return exists
 
 
@@ -78,9 +74,7 @@ def _read_decrypt_file(filename: str, key: str) -> bytes:
     while not encrypted_file:
         encrypted_file = _download_file(filename)
         if not encrypted_file:
-            secure_print("failed to download file--check your internet " "connection")
-            input("press enter to retry")
-            add_lines(1)
+            secure_input("failed to download file--press enter to retry")
     return fernet.decrypt(encrypted_file)
 
 
@@ -91,9 +85,7 @@ def _write_encrypt_file(content: str, filename: str, key: str) -> None:
     while not result:
         result = _upload_file(content_encrypted, filename)
         if not result:
-            secure_print(f"failed to upload file--check your internet " f"connection")
-            input("press enter to retry")
-            add_lines(1)
+            secure_input("failed to upload file--press enter to retry")
 
 
 def _secure_delete_file(path_str) -> None:
