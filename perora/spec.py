@@ -26,7 +26,7 @@ from perora.fs_util import data_path, per_ext_file, local_file_exists
 from perora.secure_fs_io import (
     _read_decrypt_file,
     _write_encrypt_file,
-)
+    remote_file_exists)
 from perora.secure_term import secure_print, add_lines, clear_term, secure_input
 from perora.util import Colors, terminal_format
 
@@ -543,7 +543,7 @@ def _edit_compare_specs(spec_slug_1, spec_slug_2) -> None:
 
 
 def _load_data(key: str) -> dict:
-    if local_file_exists(data_file_path):
+    if remote_file_exists(data_file_path):
         data_content = json.loads(_read_decrypt_file(data_file_path, key))
         return data_content
     return {"specs": {}, "privateMode": False}
