@@ -15,14 +15,14 @@ from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding.vi_state import InputMode
 
 from perora.document_manager import (
-    password_prompt,
+    open_service_interactive,
     write_document,
     edit_document,
     delete_document,
     rename_document,
     edit_documents,
 )
-from perora.fs_util import _data_path, _per_ext_file, file_exists
+from perora.fs_util import data_path, per_ext_file, file_exists
 from perora.secure_fs_io import (
     _read_decrypt_file,
     _write_encrypt_file,
@@ -34,8 +34,8 @@ spec_service_name = "spec"
 data_file_name = "data"
 due_dates_file_name = "due_dates"
 reminder_config_file_name = "reminder_config"
-data_file_path = _data_path(spec_service_name, _per_ext_file(data_file_name))
-due_map_file_path = _data_path(spec_service_name, f"{due_dates_file_name}.json")
+data_file_path = data_path(spec_service_name, per_ext_file(data_file_name))
+due_map_file_path = data_path(spec_service_name, f"{due_dates_file_name}.json")
 reminder_config_file_path = f"{reminder_config_file_name}.json"
 
 node_marker = "\000node"
@@ -590,7 +590,7 @@ def _save_due_map_from_data(data: dict, due_map_path: str) -> None:
             sensitive_count += 1
         else:
             due_key = k
-        
+
         due_map["dueDates"][due_key] = v["due"]
 
     _save_due_map(due_map, due_map_path)
@@ -718,7 +718,7 @@ def print_header() -> None:
 
 def spec() -> None:
     global data, key, catalog
-    key, catalog = password_prompt(spec_service_name)
+    key, catalog = open_service_interactive(spec_service_name)
     first_loop = True
 
     command_history = InMemoryHistory()

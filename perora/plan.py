@@ -3,7 +3,7 @@ from dateutil.relativedelta import *
 
 from perora.document_manager import (
     document_in_catalog,
-    password_prompt,
+    open_service_interactive,
     write_document,
     edit_documents,
 )
@@ -61,7 +61,7 @@ def format_date_range(date_1: datetime.date, date_2: datetime.date) -> str:
 
 
 def whats_the_plan(args: str = None) -> None:
-    key, catalog = password_prompt(plan_service_name)
+    key, catalog = open_service_interactive(plan_service_name)
     default_layout = "d c c+1"
     cache_triad_layout = "c-1 c c+1"
     args = (

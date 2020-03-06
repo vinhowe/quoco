@@ -1,3 +1,4 @@
+import atexit
 import json
 import os
 import subprocess
@@ -5,22 +6,32 @@ import tempfile
 import uuid
 from dataclasses import dataclass
 from getpass import getpass
-from shutil import which
 from typing import Dict, Union, List
+import atexit
 
 from cryptography.fernet import InvalidToken
 
-from perora.fs_util import _data_path, _per_ext_file, file_exists, mkdir_if_not_exist
+from perora.fs_util import (
+    data_path,
+    per_ext_file,
+    file_exists,
+    mkdir_if_not_exist,
+    touch_file,
+)
 from perora.secure_fs_io import (
     _read_decrypt_file,
     _write_encrypt_file,
     _gen_password_key,
     default_salt,
-    _secure_delete_file)
+    _secure_delete_file,
+)
 from perora.secure_term import clear_term, add_lines, secure_print
 
 catalog_file_name = "catalog"
 documents_dir_name = "documents"
+lock_filename = ".plock"
+
+open_services = []
 
 
 @dataclass
@@ -33,7 +44,7 @@ class DocumentInfo:
 
     # TODO: see if there isn't a more elegant way to get this service_name in here
     def real_path(self, service_name: str):
-        return _documents_path(service_name, _per_ext_file(self.obfuscated_name))
+        return _documents_path(service_name, per_ext_file(self.obfuscated_name))
 
     @staticmethod
     def deserialize(data: dict):
@@ -72,7 +83,7 @@ def _load_catalog_from_file(service_name: str, key: str) -> Catalog:
     catalog = Catalog.deserialize(
         json.loads(
             _read_decrypt_file(
-                _documents_path(service_name, _per_ext_file(catalog_file_name)), key
+                _documents_path(service_name, per_ext_file(catalog_file_name)), key
             )
         )
     )
@@ -82,9 +93,9 @@ def _load_catalog_from_file(service_name: str, key: str) -> Catalog:
 
 
 def _flush_catalog(
-        catalog: Union[Catalog, dict], service_name: str, key: str
+    catalog: Union[Catalog, dict], service_name: str, key: str
 ) -> _write_encrypt_file:
-    path = _documents_path(service_name, _per_ext_file(catalog_file_name))
+    path = _documents_path(service_name, per_ext_file(catalog_file_name))
     catalog_data = catalog.serialize() if catalog is Catalog else catalog
 
     # Should return whatever _write_encrypt_file does (right now, None)
@@ -99,7 +110,7 @@ def _catalog(service_name: str, key: str) -> Catalog:
 
 
 def _documents_path(service_name: str, *paths):
-    path = _data_path(service_name, documents_dir_name)
+    path = data_path(service_name, documents_dir_name)
     mkdir_if_not_exist(path)
 
     return os.path.join(path, *paths)
@@ -117,7 +128,7 @@ def _document_filename(service_name: str, document_name: str, key):
         return None
 
     obfuscated_name = catalog.documents[document_name].obfuscated_name
-    return _documents_path(service_name, _per_ext_file(obfuscated_name))
+    return _documents_path(service_name, per_ext_file(obfuscated_name))
 
 
 def _document_filename_or_create(service_name: str, document_name: str, key: str):
@@ -132,12 +143,16 @@ def _document_filename_or_create(service_name: str, document_name: str, key: str
     catalog.documents[document_name] = DocumentInfo(document_name, obfuscated_name)
     _flush_catalog(catalog, service_name, key)
 
-    return _documents_path(service_name, _per_ext_file(obfuscated_name))
+    return _documents_path(service_name, per_ext_file(obfuscated_name))
 
 
 def read_document(service_name: str, document_name: str, key: str):
     document_filename = _document_filename(service_name, document_name, key)
-    return None if document_filename is None else _read_decrypt_file(document_filename, key)
+    return (
+        None
+        if document_filename is None
+        else _read_decrypt_file(document_filename, key)
+    )
 
 
 def write_document(content: str, service_name: str, document_name: str, key: str):
@@ -145,7 +160,9 @@ def write_document(content: str, service_name: str, document_name: str, key: str
     return _write_encrypt_file(content, document_filename, key)
 
 
-def rename_document(service_name: str, document_name: str, new_document_name: str, key: str):
+def rename_document(
+    service_name: str, document_name: str, new_document_name: str, key: str
+):
     catalog = _catalog(service_name, key)
     if document_name not in catalog.documents:
         return
@@ -173,7 +190,7 @@ def catalog_exists_or_create(service_name: str, salt: str) -> None:
     :param service_name:
     :param salt:
     """
-    if not file_exists(_documents_path(service_name, _per_ext_file(catalog_file_name))):
+    if not file_exists(_documents_path(service_name, per_ext_file(catalog_file_name))):
         secure_print(f"no catalog file found for {service_name} service")
         while True:
             password = getpass("enter a new password: ")
@@ -190,7 +207,29 @@ def catalog_exists_or_create(service_name: str, salt: str) -> None:
         _flush_catalog(Catalog(service_name, {}), service_name, key)
 
 
-def password_prompt(service_name: str, salt: str = default_salt):
+def lock_path(service_name: str) -> str:
+    return data_path(service_name, lock_filename)
+
+
+def quit_if_lock_exists(service_name: str) -> None:
+    if file_exists(lock_path(service_name)):
+        secure_print(f"another instance of {service_name} service is running")
+        exit(1)
+
+
+def create_lock(service_name: str) -> None:
+    touch_file(lock_path(service_name))
+
+
+def release_lock(service_name: str) -> None:
+    _secure_delete_file(lock_path(service_name))
+
+
+def open_service_interactive(service_name: str, salt: str = default_salt):
+    if service_name in open_services:
+        secure_print(f"{service_name} already open")
+        return None
+    quit_if_lock_exists(service_name)
     catalog_exists_or_create(service_name, salt)
     while True:
         password = getpass("enter your password: ")
@@ -205,6 +244,8 @@ def password_prompt(service_name: str, salt: str = default_salt):
             continue
         break
         # TODO make sure this exits on when the right password is entered
+    create_lock(service_name)
+    open_services.append(service_name)
     return key, catalog
 
 
@@ -222,17 +263,21 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
     documents_read_info = []
 
     for name in names:
-        temp_edit_file = tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=".md")
+        temp_edit_file = tempfile.NamedTemporaryFile(
+            mode="wb", delete=False, suffix=".md"
+        )
         decrypted_content = read_document(service_name, name, key)
 
         temp_edit_file.write(decrypted_content)
         temp_edit_file.flush()
-        documents_read_info.append({
-            "temp_file": temp_edit_file,
-            "temp_file_path": temp_edit_file.name,
-            "name": name,
-            "content": decrypted_content
-        })
+        documents_read_info.append(
+            {
+                "temp_file": temp_edit_file,
+                "temp_file_path": temp_edit_file.name,
+                "name": name,
+                "content": decrypted_content,
+            }
+        )
 
     vi_secure_settings = [
         "history=0",
@@ -260,8 +305,8 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
         # Account for Vim's "2 files to edit" output
         add_lines()
     # else:
-        # TODO: Find out why this is needed
-        # add_lines(-1)
+    # TODO: Find out why this is needed
+    # add_lines(-1)
 
     command = f'vi + "+{vi_secure_settings_string}" {files_argument}'
 
@@ -279,3 +324,11 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
 
 def edit_document(service_name: str, name: str, key: str) -> None:
     edit_documents(service_name, [name], key)
+
+
+def close_services():
+    for service_name in open_services:
+        release_lock(service_name)
+
+
+atexit.register(close_services)

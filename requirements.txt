@@ -1,5 +1,15 @@
+certifi==2019.11.28
 cffi==1.13.2
+chardet==3.0.4
 cryptography==2.8
+idna==2.8
 pkg-resources==0.0.0
+powerline-status==2.7
+prompt-toolkit==3.0.2
 pycparser==2.19
+Pygments==2.5.2
+python-dateutil==2.8.1
+requests==2.22.0
 six==1.14.0
+urllib3==1.25.8
+wcwidth==0.1.8

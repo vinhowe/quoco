@@ -3,7 +3,7 @@ import datetime
 import tempfile
 from typing import List, Tuple
 
-from perora.document_manager import password_prompt, write_document, edit_document, document_in_catalog
+from perora.document_manager import open_service_interactive, write_document, edit_document, document_in_catalog
 
 temp_edit_files: List[Tuple[tempfile.NamedTemporaryFile, str]] = []
 
@@ -34,7 +34,7 @@ def open_journal_entry(date, key) -> None:
 
 
 def launch_journal_editor(date_string=None) -> None:
-    key, catalog = password_prompt(journal_service_name)
+    key, catalog = open_service_interactive(journal_service_name)
 
     date = date_string if date_string is not None else today_date_string()
 
