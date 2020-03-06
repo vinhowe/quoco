@@ -9,15 +9,12 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from google.api_core.timeout import ConstantTimeout
 from google.auth.exceptions import TransportError
-
 from google.cloud import storage
 from requests import ReadTimeout
 
-from perora.fs_util import file_exists
-
 # TODO: Generate a new salt for every fresh installation instead
+from perora.fs_util import local_file_exists
 from perora.secure_term import add_lines, secure_print
 
 default_salt = "LCzJKR9jSyc42WHBrTaUMg=="
@@ -34,6 +31,23 @@ bucket = storage_client.bucket(bucket_name)
 max_retries = 1
 
 
+def file_exists(filename: str) -> bool:
+    blob = bucket.blob(filename)
+    exists = None
+    while exists is None:
+        try:
+            exists = blob.exists(timeout=10)
+        except (TransportError, ReadTimeout):
+            pass
+        if exists is None:
+            secure_print(
+                "failed to check if file exists--check your internet connection"
+            )
+            input("press enter to retry")
+            add_lines(1)
+    return exists
+
+
 def _upload_file(content: bytes, filename: str) -> bool:
     blob = bucket.blob(filename)
     try:
@@ -42,7 +56,7 @@ def _upload_file(content: bytes, filename: str) -> bool:
             file_obj=string_buffer,
             size=len(content),
             content_type="text/plain",
-            num_retries=max_retries
+            num_retries=max_retries,
         )
         return True
     except (ReadTimeout, TransportError):
@@ -83,7 +97,7 @@ def _write_encrypt_file(content: str, filename: str, key: str) -> None:
 
 
 def _secure_delete_file(path_str) -> None:
-    if not file_exists(path_str):
+    if not local_file_exists(path_str):
         return
 
     if which("shred") is not None:

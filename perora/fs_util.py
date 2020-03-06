@@ -5,12 +5,12 @@ data_dir = "data"
 per_ext = "per"
 
 
-def file_exists(filename) -> bool:
+def local_file_exists(filename) -> bool:
     return os.path.exists(filename)
 
 
 def mkdir_if_not_exist(dir_path: str) -> None:
-    if not file_exists(dir_path):
+    if not local_file_exists(dir_path):
         os.mkdir(dir_path)
 
 
@@ -18,8 +18,8 @@ def per_ext_file(filename: str) -> str:
     return f"{filename}.{per_ext}"
 
 
-def touch_file(filename: str) -> bool:
-    if file_exists(filename):
+def touch_local_file(filename: str) -> bool:
+    if local_file_exists(filename):
         return False
 
     Path(filename).touch()

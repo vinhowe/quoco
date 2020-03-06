@@ -22,7 +22,7 @@ from perora.document_manager import (
     rename_document,
     edit_documents,
 )
-from perora.fs_util import data_path, per_ext_file, file_exists
+from perora.fs_util import data_path, per_ext_file, local_file_exists
 from perora.secure_fs_io import (
     _read_decrypt_file,
     _write_encrypt_file,
@@ -545,14 +545,14 @@ def _edit_compare_specs(spec_slug_1, spec_slug_2) -> None:
 
 
 def _load_data(key: str) -> dict:
-    if file_exists(data_file_path):
+    if local_file_exists(data_file_path):
         data_content = json.loads(_read_decrypt_file(data_file_path, key))
         return data_content
     return {"specs": {}, "privateMode": False}
 
 
 def _load_due_map() -> dict:
-    if file_exists(due_map_file_path):
+    if local_file_exists(due_map_file_path):
         with open(due_map_file_path) as due_map_file:
             due_map_content = json.load(due_map_file)
             return due_map_content
@@ -560,7 +560,7 @@ def _load_due_map() -> dict:
 
 
 def _load_reminder_config() -> dict:
-    if file_exists(reminder_config_file_path):
+    if local_file_exists(reminder_config_file_path):
         with open(reminder_config_file_path) as reminder_config_file:
             reminder_config_config = json.load(reminder_config_file)
             return reminder_config_config
