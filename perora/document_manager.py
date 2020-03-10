@@ -173,14 +173,14 @@ def rename_document(
     _flush_catalog(catalog, service_name, key)
 
 
-def delete_document(service_name: str, document_name: str, key: str) -> None:
+def delete_document(service_name: str, document_name: str, key: str) -> bool:
     catalog = _catalog(service_name, key)
     document_filename = _document_filename(service_name, document_name, key)
     if document_filename is None:
-        return
+        return False
     del catalog.documents[document_name]
     _flush_catalog(catalog, service_name, key)
-    return _secure_delete_file(document_filename)
+    return remote_file_delete(document_filename)
 
 
 def catalog_exists_or_create(service_name: str, salt: str) -> None:
