@@ -62,7 +62,7 @@ def format_date_range(date_1: datetime.date, date_2: datetime.date) -> str:
 
 def whats_the_plan(args: str = None) -> None:
     key, catalog = open_service_interactive(plan_service_name)
-    default_layout = "d c c+1"
+    default_layout = "d t c c+1"
     cache_triad_layout = "c-1 c c+1"
     args = (
         f"{default_layout} -- {datetime.now().strftime('%m.%d.%Y')}"
@@ -112,6 +112,21 @@ def whats_the_plan(args: str = None) -> None:
 
             if cache_key not in names_to_open:
                 names_to_open.append(cache_key)
+
+        # Decision stream--a place to make decisions made throughout the day
+        # consciously
+        elif plan_arg[0] == "t":
+            current_plan_date = current_plan_date + timedelta(days=signed_difference)
+
+            decision_stream_entry_key = f"decision_stream_{current_plan_date.day}_{current_plan_date.month}_{current_plan_date.year}"
+
+            if not document_in_catalog(plan_service_name, decision_stream_entry_key, key):
+                pretty_name = f"decision stream: {current_plan_date.strftime('%a').lower()} {current_plan_date.day} {current_plan_date.strftime('%b').lower()} {current_plan_date.year} "
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, decision_stream_entry_key, key)
+
+            if decision_stream_entry_key not in names_to_open:
+                names_to_open.append(decision_stream_entry_key)
 
         # Journal--non-organizational dump
         # Should be noted that this makes Perora journal obsolete
