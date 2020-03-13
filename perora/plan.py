@@ -225,4 +225,14 @@ def whats_the_plan(args: str = None) -> None:
             if life_plan_key not in names_to_open:
                 names_to_open.append(life_plan_key)
 
+        elif plan_arg[0] == "p":
+            persistent_weekly_key = "persistent_weekly"
+            if not document_in_catalog(plan_service_name, persistent_weekly_key, key):
+                pretty_name = f"persistent weekly structure"
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, persistent_weekly_key, key)
+
+            if persistent_weekly_key not in names_to_open:
+                names_to_open.append(persistent_weekly_key)
+
     edit_documents(plan_service_name, names_to_open, key)

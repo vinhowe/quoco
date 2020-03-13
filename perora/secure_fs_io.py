@@ -14,6 +14,7 @@ from google.cloud import storage
 from google.cloud.exceptions import NotFound
 from google.cloud.storage import Blob
 from requests import ReadTimeout
+from urllib3.exceptions import NewConnectionError
 
 from perora.fs_util import local_file_exists
 from perora.secure_term import secure_input
@@ -39,7 +40,7 @@ def remote_file_exists(filename: str) -> bool:
     while exists is None:
         try:
             exists = blob.exists(timeout=10)
-        except (TransportError, ReadTimeout):
+        except (TransportError, ReadTimeout, NewConnectionError):
             pass
         if exists is None:
             secure_input("failed to check if file exists--press enter to retry")
