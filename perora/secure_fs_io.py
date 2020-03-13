@@ -58,7 +58,7 @@ def _upload_file(content: bytes, filename: str) -> bool:
             num_retries=max_retries,
         )
         return True
-    except (ReadTimeout, TransportError):
+    except (ReadTimeout, TransportError, NewConnectionError):
         # NO SECURE PRINT HERE
         return False
 
@@ -67,7 +67,7 @@ def _download_file(filename: str):
     blob = bucket.blob(filename)
     try:
         return blob.download_as_string()
-    except TransportError:
+    except (TransportError, ReadTimeout, NewConnectionError):
         return False
 
 
@@ -111,7 +111,7 @@ def remote_file_delete(filename: str) -> bool:
             return True
         except NotFound:
             return False
-        except (TransportError, ReadTimeout):
+        except (TransportError, ReadTimeout, NewConnectionError):
             secure_input("failed to delete file--press enter to retry")
             continue
 
