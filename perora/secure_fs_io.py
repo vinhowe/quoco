@@ -14,7 +14,6 @@ from google.cloud import storage
 from google.cloud.exceptions import NotFound
 from google.cloud.storage import Blob
 from requests import ReadTimeout
-from urllib3.exceptions import NewConnectionError
 
 from perora.fs_util import local_file_exists
 from perora.secure_term import secure_input
@@ -40,7 +39,7 @@ def remote_file_exists(filename: str) -> bool:
     while exists is None:
         try:
             exists = blob.exists(timeout=10)
-        except (TransportError, ReadTimeout, NewConnectionError):
+        except (TransportError, ReadTimeout, ConnectionError):
             pass
         if exists is None:
             secure_input("failed to check if file exists--press enter to retry")
@@ -58,7 +57,7 @@ def _upload_file(content: bytes, filename: str) -> bool:
             num_retries=max_retries,
         )
         return True
-    except (ReadTimeout, TransportError, NewConnectionError):
+    except (ReadTimeout, TransportError, ConnectionError):
         # NO SECURE PRINT HERE
         return False
 
@@ -67,7 +66,7 @@ def _download_file(filename: str):
     blob = bucket.blob(filename)
     try:
         return blob.download_as_string()
-    except (TransportError, ReadTimeout, NewConnectionError):
+    except (TransportError, ReadTimeout, ConnectionError):
         return False
 
 
@@ -111,7 +110,7 @@ def remote_file_delete(filename: str) -> bool:
             return True
         except NotFound:
             return False
-        except (TransportError, ReadTimeout, NewConnectionError):
+        except (TransportError, ReadTimeout, ConnectionError):
             secure_input("failed to delete file--press enter to retry")
             continue
 
