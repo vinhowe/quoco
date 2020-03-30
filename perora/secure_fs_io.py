@@ -78,7 +78,7 @@ def _read_decrypt_file(filename: str, key: str) -> bytes:
         encrypted_file = _download_file(filename)
         if not encrypted_file:
             secure_input("failed to download file--press enter to retry")
-    return fernet.decrypt(encrypted_file)
+    return fernet.decrypt(encrypted_file).decode("utf-8")
 
 
 def _write_encrypt_file(content: str, filename: str, key: str) -> None:

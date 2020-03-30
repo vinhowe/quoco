@@ -6,6 +6,7 @@ from perora.document_manager import (
     open_service_interactive,
     write_document,
     edit_documents,
+    read_document,
 )
 
 plan_service_name = "plan"
@@ -120,10 +121,14 @@ def whats_the_plan(args: str = None) -> None:
 
             decision_stream_entry_key = f"decision_stream_{current_plan_date.day}_{current_plan_date.month}_{current_plan_date.year}"
 
-            if not document_in_catalog(plan_service_name, decision_stream_entry_key, key):
+            if not document_in_catalog(
+                plan_service_name, decision_stream_entry_key, key
+            ):
                 pretty_name = f"decision stream: {current_plan_date.strftime('%a').lower()} {current_plan_date.day} {current_plan_date.strftime('%b').lower()} {current_plan_date.year} "
                 header = f"# {pretty_name}\n\n\n"
-                write_document(header, plan_service_name, decision_stream_entry_key, key)
+                write_document(
+                    header, plan_service_name, decision_stream_entry_key, key
+                )
 
             if decision_stream_entry_key not in names_to_open:
                 names_to_open.append(decision_stream_entry_key)

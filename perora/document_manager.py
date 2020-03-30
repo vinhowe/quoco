@@ -263,7 +263,7 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
 
     for name in names:
         temp_edit_file = tempfile.NamedTemporaryFile(
-            mode="wb", delete=False, suffix=".md"
+            mode="w", delete=False, suffix=".md"
         )
         decrypted_content = read_document(service_name, name, key)
 
