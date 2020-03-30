@@ -9,6 +9,7 @@ from prompt_toolkit.key_binding.vi_state import InputMode
 from log.secure_term import secure_print, add_lines, clear_term
 
 _log_file_name = "log.txt"
+_max_last_log_entries = 20
 
 
 def get_prompt_text() -> List[Tuple[str, str]]:
@@ -60,7 +61,9 @@ def print_log_history(n_lines: int):
             return
         max_last_entries = min(n_lines, len(matching_lines))
         entries_with_plurality = "entry" if max_last_entries == 1 else "entries"
-        secure_print(f"last {max_last_entries} {entries_with_plurality}:")
+        secure_print(
+            f"last {max_last_entries} {entries_with_plurality} ({n_lines} max):"
+        )
         add_lines()
         last_lines = matching_lines[-max_last_entries:]
         for line in last_lines:
@@ -72,7 +75,7 @@ def main() -> None:
     prompt_session = PromptSession()
     try:
         while True:
-            print_log_history(10)
+            print_log_history(_max_last_log_entries)
             entry: str = prompt_session.prompt(
                 get_prompt_text, multiline=False, vi_mode=True
             )
