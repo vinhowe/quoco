@@ -40,7 +40,7 @@ def write_to_log(entry):
     now = datetime.now()
     formatted_time_now = now.strftime("%X")
     formatted_date_now = formatted_date(now)
-    line = f'{formatted_date_now} @ {formatted_time_now}: "{entry}"\n'
+    line = f'{formatted_date_now} @ {formatted_time_now}: {entry}\n'
     with open(_log_file_name, "a") as log_file:
         log_file.write(line)
     secure_print(f'"{entry}" at {formatted_time_now} on {formatted_date_now}')
@@ -79,6 +79,8 @@ def main() -> None:
             entry: str = prompt_session.prompt(
                 get_prompt_text, multiline=False, vi_mode=True
             )
+            if entry is None:
+                continue
             single_line_entry = entry.replace("\n", "").replace("\r", "").strip()
 
             if single_line_entry.lower() in ["q", "exit", "quit", ":q", "close"]:
