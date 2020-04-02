@@ -1,10 +1,7 @@
-import atexit
 import json
 import os
-import shlex
 import subprocess
 import tempfile
-import time
 import uuid
 from dataclasses import dataclass
 from getpass import getpass
@@ -14,7 +11,6 @@ import atexit
 from watchdog.observers import Observer
 from watchdog.events import (
     FileSystemEventHandler,
-    PatternMatchingEventHandler,
     FileSystemEvent,
 )
 from cryptography.fernet import InvalidToken
@@ -23,7 +19,7 @@ from perora.fs_util import (
     data_path,
     per_ext_file,
     mkdir_if_not_exist,
-    touch_local_file,
+    local_file_exists,
 )
 from perora.secure_fs_io import (
     _read_decrypt_file,
@@ -40,6 +36,9 @@ from perora.secure_term import clear_term, add_lines, secure_print
 catalog_file_name = "catalog"
 documents_dir_name = "documents"
 lock_filename = ".plock"
+
+document_config_filename = "document_config.json"
+default_document_config = {"orientation": "horizontal"}
 
 open_services = []
 
@@ -322,6 +321,15 @@ class DocumentFilesEventHandler(FileSystemEventHandler):
 
 def edit_documents(service_name: str, names: List[str], key: str) -> None:
     documents_read_info = []
+    document_config = default_document_config
+
+    if local_file_exists(document_config_filename):
+        with open(document_config_filename) as document_config_data:
+            # Make sure to include any default keys
+            document_config = {
+                **document_config,
+                **json.load(document_config_data),
+            }
 
     with tempfile.TemporaryDirectory() as temp_dir:
         for name in names:
@@ -365,7 +373,8 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
         temp_paths = [v["temp_file_path"] for v in documents_read_info]
         files_argument = " ".join(temp_paths)
         if len(documents_read_info) > 1:
-            files_argument = f"-O {files_argument}"
+            split_switch = "o" if document_config["orientation"] == "vertical" else "O"
+            files_argument = f"-{split_switch} {files_argument}"
             # Account for Vim's "2 files to edit" output
             add_lines()
 
@@ -373,6 +382,7 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
 
         # subprocess.call(command, shell=True)
         paths_map = {v["temp_file_path"]: v["name"] for v in documents_read_info}
+        print(paths_map)
         DocumentEditorManager(service_name, temp_dir, paths_map, command, key).run()
 
         document_names = ", ".join([f"'{name}'" for name in names])
@@ -383,10 +393,7 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
         for info in documents_read_info:
             with open(info["temp_file_path"]) as read_temp_edit_file:
                 write_document(
-                    read_temp_edit_file.read(),
-                    service_name,
-                    info["name"],
-                    key
+                    read_temp_edit_file.read(), service_name, info["name"], key
                 )
 
             # Should only be on file that's being closed
