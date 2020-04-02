@@ -1,14 +1,22 @@
 import atexit
 import json
 import os
+import shlex
 import subprocess
 import tempfile
+import time
 import uuid
 from dataclasses import dataclass
 from getpass import getpass
 from typing import Dict, Union, List
 import atexit
 
+from watchdog.observers import Observer
+from watchdog.events import (
+    FileSystemEventHandler,
+    PatternMatchingEventHandler,
+    FileSystemEvent,
+)
 from cryptography.fernet import InvalidToken
 
 from perora.fs_util import (
@@ -23,7 +31,10 @@ from perora.secure_fs_io import (
     _gen_password_key,
     default_salt,
     _secure_delete_file,
-    remote_file_exists, remote_file_touch, remote_file_delete)
+    remote_file_exists,
+    remote_file_touch,
+    remote_file_delete,
+)
 from perora.secure_term import clear_term, add_lines, secure_print
 
 catalog_file_name = "catalog"
@@ -189,7 +200,9 @@ def catalog_exists_or_create(service_name: str, salt: str) -> None:
     :param service_name:
     :param salt:
     """
-    if not remote_file_exists(_documents_path(service_name, per_ext_file(catalog_file_name))):
+    if not remote_file_exists(
+        _documents_path(service_name, per_ext_file(catalog_file_name))
+    ):
         secure_print(f"no catalog file found for {service_name} service")
         while True:
             password = getpass("enter a new password: ")
@@ -254,74 +267,132 @@ def _remove_temp_file(file_obj: tempfile.NamedTemporaryFile, path_str: str) -> N
     try:
         file_obj.close()
     except:
-        # TODO: Find what error (if any, if not, get rid of this) is thrown when a file object has already been closed
+        # TODO: Find what error (if any, if not, get rid of this) is thrown when a
+        #  file object has already been closed
         pass
+
+
+class DocumentEditorManager:
+    # Set the directory on watch
+    def __init__(
+        self, service_name: str, root_path: str, paths_map: Dict[str, str], command, key
+    ):
+        self._key = key
+        self._service_name = service_name
+        self._root_path = root_path
+        self._paths_map = paths_map
+        self._command = command
+        self._observer = Observer()
+
+    def run(self) -> None:
+        event_handler = DocumentFilesEventHandler(
+            self._service_name, self._paths_map, self._key
+        )
+        self._observer.schedule(event_handler, self._root_path)
+        self._observer.start()
+        try:
+            subprocess.call(self._command, shell=True)
+        except Exception as e:
+            print(e)
+        finally:
+            self._observer.stop()
+
+        self._observer.join()
+
+
+class DocumentFilesEventHandler(FileSystemEventHandler):
+    def __init__(self, service_name, paths_map, key) -> None:
+        self._key = key
+        self._service_name = service_name
+        self._paths_map = paths_map
+
+    def on_any_event(self, event: FileSystemEvent) -> None:
+        if event.is_directory:
+            return None
+
+        if event.event_type == "modified" and event.src_path in self._paths_map:
+            with open(event.src_path) as read_temp_edit_file:
+                write_document(
+                    read_temp_edit_file.read(),
+                    self._service_name,
+                    self._paths_map[event.src_path],
+                    self._key,
+                )
 
 
 def edit_documents(service_name: str, names: List[str], key: str) -> None:
     documents_read_info = []
 
-    for name in names:
-        temp_edit_file = tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".md"
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for name in names:
+            temp_edit_file = tempfile.NamedTemporaryFile(
+                mode="w", delete=False, suffix=".md", dir=temp_dir
+            )
+            decrypted_content = read_document(service_name, name, key)
+
+            temp_edit_file.write(decrypted_content)
+            temp_edit_file.flush()
+            documents_read_info.append(
+                {
+                    "temp_file": temp_edit_file,
+                    "temp_file_path": temp_edit_file.name,
+                    "name": name,
+                    "content": decrypted_content,
+                }
+            )
+
+        vi_secure_settings = [
+            "history=0",
+            "nobackup",
+            "nomodeline",
+            "noshelltemp",
+            "noswapfile",
+            "noundofile",
+            "nowritebackup",
+            "secure",
+            "viminfo=",
+        ]
+
+        vi_secure_settings_string = " | ".join(
+            list(map(lambda s: f"set {s}", vi_secure_settings))
         )
-        decrypted_content = read_document(service_name, name, key)
 
-        temp_edit_file.write(decrypted_content)
-        temp_edit_file.flush()
-        documents_read_info.append(
-            {
-                "temp_file": temp_edit_file,
-                "temp_file_path": temp_edit_file.name,
-                "name": name,
-                "content": decrypted_content,
-            }
-        )
+        # https://vi.stackexchange.com/questions/6177/the-simplest-way-to-start-vim-in
+        # -private-mode
+        # `set noswapfile` prevents vim from making a swap file for the session
+        # `set viminfo=` prevents vim from outputting operations and commands in
+        # plaintext to ~/.viminfo
+        temp_paths = [v["temp_file_path"] for v in documents_read_info]
+        files_argument = " ".join(temp_paths)
+        if len(documents_read_info) > 1:
+            files_argument = f"-O {files_argument}"
+            # Account for Vim's "2 files to edit" output
+            add_lines()
 
-    vi_secure_settings = [
-        "history=0",
-        "nobackup",
-        "nomodeline",
-        "noshelltemp",
-        "noswapfile",
-        "noundofile",
-        "nowritebackup",
-        "secure",
-        "viminfo=",
-    ]
+        command = f'vi + "+{vi_secure_settings_string}" {files_argument}'
 
-    vi_secure_settings_string = " | ".join(
-        list(map(lambda s: f"set {s}", vi_secure_settings))
-    )
+        # subprocess.call(command, shell=True)
+        paths_map = {v["temp_file_path"]: v["name"] for v in documents_read_info}
+        DocumentEditorManager(service_name, temp_dir, paths_map, command, key).run()
 
-    # https://vi.stackexchange.com/questions/6177/the-simplest-way-to-start-vim-in-private-mode
-    # `set noswapfile` prevents vim from making a swap file for the session
-    # `set viminfo=` prevents vim from outputting operations and commands in plaintext to ~/.viminfo
+        document_names = ", ".join([f"'{name}'" for name in names])
+        secure_print(f"uploading document(s): {document_names}")
 
-    files_argument = " ".join([v["temp_file_path"] for v in documents_read_info])
-    if len(documents_read_info) > 1:
-        files_argument = f"-O {files_argument}"
-        # Account for Vim's "2 files to edit" output
-        add_lines()
-    # else:
-    # TODO: Find out why this is needed
-    # add_lines(-1)
+        # Final pass in case listeners missed anything
 
-    command = f'vi + "+{vi_secure_settings_string}" {files_argument}'
+        for info in documents_read_info:
+            with open(info["temp_file_path"]) as read_temp_edit_file:
+                write_document(
+                    read_temp_edit_file.read(),
+                    service_name,
+                    info["name"],
+                    key
+                )
 
-    subprocess.call(command, shell=True)
+            # Should only be on file that's being closed
+            _remove_temp_file(info["temp_file"], info["temp_file_path"])
 
-    document_names = ", ".join([f"'{name}'" for name in names])
-    secure_print(f"uploading document(s): {document_names}")
-
-    for info in documents_read_info:
-        with open(info["temp_file_path"]) as read_temp_edit_file:
-            write_document(read_temp_edit_file.read(), service_name, info["name"], key)
-
-        # Should only be on file that's being closed
-        _remove_temp_file(info["temp_file"], info["temp_file_path"])
-
-    # clear_term()
+        # clear_term()
 
 
 def edit_document(service_name: str, name: str, key: str) -> None:
