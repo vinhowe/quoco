@@ -63,7 +63,7 @@ def format_date_range(date_1: datetime.date, date_2: datetime.date) -> str:
 
 def whats_the_plan(args: str = None) -> None:
     key, catalog = open_service_interactive(plan_service_name)
-    default_layout = "p d t c c+1"
+    default_layout = "p d s c c+1"
     cache_triad_layout = "c-1 c c+1"
     args = (
         f"{default_layout} -- {datetime.now().strftime('%m.%d.%Y')}"
@@ -100,7 +100,8 @@ def whats_the_plan(args: str = None) -> None:
             # We hope plan_arg[2:] is a number but we don't really check
             signed_difference = eval(f"{operator}{plan_arg[2:]}")
 
-        # Cache--anything you need to get our of your head that is an organizational matter
+        # Cache--anything you need to get our of your head that is an organizational
+        # matter
         if plan_arg[0] == "c":
             current_plan_date = current_plan_date + timedelta(days=signed_difference)
 
@@ -149,6 +150,7 @@ def whats_the_plan(args: str = None) -> None:
                 names_to_open.append(journal_entry_key)
 
         elif plan_arg[0] == "d":
+            # Day
             current_plan_date = current_plan_date + timedelta(days=signed_difference)
 
             day_plan_key = f"day_{current_plan_date.day}_{current_plan_date.month}_{current_plan_date.year}"
@@ -162,6 +164,7 @@ def whats_the_plan(args: str = None) -> None:
                 names_to_open.append(day_plan_key)
 
         elif plan_arg[0] == "w":
+            # Week
             current_plan_date = current_plan_date + timedelta(weeks=signed_difference)
 
             week = week_number_of_month(current_plan_date)
@@ -194,6 +197,7 @@ def whats_the_plan(args: str = None) -> None:
                 names_to_open.append(week_plan_key)
 
         elif plan_arg[0] == "m":
+            # Month
             current_plan_date = current_plan_date + relativedelta(
                 months=signed_difference
             )
@@ -206,7 +210,30 @@ def whats_the_plan(args: str = None) -> None:
             if month_plan_key not in names_to_open:
                 names_to_open.append(month_plan_key)
 
+        elif plan_arg[0] == "s":
+            # Semester
+
+            # TODO: Hardcoded for BYU because I need this to solve a problem
+            #  for me right now and I don't have time to figure out how this is
+            #  supposed to work beautifully for everyone everywhere.
+            #  I'm only taking F/W, so this doesn't account for Sp/Su
+            current_month = current_plan_date.month
+            current_semester_name: str = "winter" if current_month < 5 else "fall"
+            semester_plan_key = (
+                f"semester_{current_semester_name}_{current_plan_date.year}"
+            )
+            if not document_in_catalog(plan_service_name, semester_plan_key, key):
+                pretty_name = (
+                    f"semester plan: {current_semester_name} {current_plan_date.year} "
+                )
+                header = f"# {pretty_name}\n\n\n"
+                write_document(header, plan_service_name, semester_plan_key, key)
+
+            if semester_plan_key not in names_to_open:
+                names_to_open.append(semester_plan_key)
+
         elif plan_arg[0] == "y":
+            # Year
             current_plan_date = current_plan_date + relativedelta(
                 years=signed_difference
             )
@@ -221,6 +248,7 @@ def whats_the_plan(args: str = None) -> None:
                 names_to_open.append(year_plan_key)
 
         elif plan_arg[0] == "l":
+            # Life
             life_plan_key = "life"
             if not document_in_catalog(plan_service_name, life_plan_key, key):
                 pretty_name = f"life plan"
@@ -231,6 +259,7 @@ def whats_the_plan(args: str = None) -> None:
                 names_to_open.append(life_plan_key)
 
         elif plan_arg[0] == "p":
+            # Persistent weekly
             persistent_weekly_key = "persistent_weekly"
             if not document_in_catalog(plan_service_name, persistent_weekly_key, key):
                 pretty_name = f"persistent weekly structure"
