@@ -1,4 +1,5 @@
 log.txt
+log_nc_1.txt
 service-account.json
 venv-*
 reminder_config.json
