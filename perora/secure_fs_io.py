@@ -2,6 +2,7 @@ import base64
 import os
 import subprocess
 import tempfile
+import time
 from io import BytesIO
 from shutil import which
 
@@ -17,7 +18,7 @@ from requests import ReadTimeout
 from urllib3.exceptions import ProtocolError
 
 from perora.fs_util import local_file_exists
-from perora.secure_term import secure_input
+from perora.secure_term import secure_print
 
 # TODO: Generate a new salt for every fresh installation instead
 default_salt = "LCzJKR9jSyc42WHBrTaUMg=="
@@ -33,6 +34,8 @@ bucket = storage_client.bucket(bucket_name)
 
 max_retries = 1
 
+retry_wait_time_seconds = 2
+
 
 def remote_file_exists(filename: str) -> bool:
     blob = bucket.blob(filename)
@@ -43,7 +46,10 @@ def remote_file_exists(filename: str) -> bool:
         except (TransportError, ReadTimeout, ConnectionError, ProtocolError):
             pass
         if exists is None:
-            secure_input("failed to check if file exists--press enter to retry")
+            secure_print(
+                f"failed to check if file exists--retrying in {retry_wait_time_seconds}s"
+            )
+            time.sleep(retry_wait_time_seconds)
     return exists
 
 
@@ -77,7 +83,10 @@ def _read_decrypt_file(filename: str, key: str) -> bytes:
     while not encrypted_file:
         encrypted_file = _download_file(filename)
         if not encrypted_file:
-            secure_input("failed to download file--press enter to retry")
+            secure_print(
+                f"failed to download file--retrying in {retry_wait_time_seconds}s"
+            )
+            time.sleep(retry_wait_time_seconds)
     return fernet.decrypt(encrypted_file).decode("utf-8")
 
 
@@ -88,7 +97,10 @@ def _write_encrypt_file(content: str, filename: str, key: str) -> None:
     while not result:
         result = _upload_file(content_encrypted, filename)
         if not result:
-            secure_input("failed to upload file--press enter to retry")
+            secure_print(
+                f"failed to upload file--retrying in {retry_wait_time_seconds}s"
+            )
+            time.sleep(retry_wait_time_seconds)
 
 
 def _secure_delete_file(path_str) -> None:
@@ -112,7 +124,10 @@ def remote_file_delete(filename: str) -> bool:
         except NotFound:
             return False
         except (TransportError, ReadTimeout, ConnectionError, ProtocolError):
-            secure_input("failed to delete file--press enter to retry")
+            secure_print(
+                f"failed to delete file--retrying in {retry_wait_time_seconds}s"
+            )
+            time.sleep(retry_wait_time_seconds)
             continue
 
 
@@ -121,7 +136,10 @@ def remote_file_touch(filename: str) -> bool:
     while not result:
         result = _upload_file(b"", filename)
         if not result:
-            secure_input("failed to touch file--press enter to retry")
+            secure_print(
+                f"failed to touch file--retrying in {retry_wait_time_seconds}s"
+            )
+            time.sleep(retry_wait_time_seconds)
 
 
 def _gen_password_key(password: str, b64_salt: str = "LCzJKR9jSyc42WHBrTaUMg=="):
