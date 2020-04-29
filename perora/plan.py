@@ -65,6 +65,7 @@ def whats_the_plan(args: str = None) -> None:
     key, catalog = open_service_interactive(plan_service_name)
     default_layout = "p d s c c+1"
     cache_triad_layout = "c-1 c c+1"
+    telescope_layout = "d w m l"
     args = (
         f"{default_layout} -- {datetime.now().strftime('%m.%d.%Y')}"
         if args is None
@@ -80,6 +81,7 @@ def whats_the_plan(args: str = None) -> None:
     if len(plan_args) > 0:
         plan_args = plan_args.replace("k", default_layout)
         plan_args = plan_args.replace("C", cache_triad_layout)
+        plan_args = plan_args.replace("t", telescope_layout)
 
     plan_args = plan_args.split(" ")
 
