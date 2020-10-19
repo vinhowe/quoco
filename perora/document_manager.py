@@ -378,7 +378,11 @@ def edit_documents(service_name: str, names: List[str], key: str) -> None:
             # Account for Vim's "2 files to edit" output
             add_lines()
 
-        command = f'vi + "+{vi_secure_settings_string}" {files_argument}'
+        vim_path = (
+            document_config["vim_path"] if "vim_path" in document_config else "vim"
+        )
+
+        command = f'{vim_path} + "+{vi_secure_settings_string}" {files_argument}'
 
         # subprocess.call(command, shell=True)
         paths_map = {v["temp_file_path"]: v["name"] for v in documents_read_info}

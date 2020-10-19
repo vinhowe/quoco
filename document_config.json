@@ -1,3 +1,4 @@
 {
-    "orientation": "horizontal"
+    "orientation": "horizontal",
+    "vim_path": "nvim"
 }
