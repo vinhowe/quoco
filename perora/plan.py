@@ -20,7 +20,7 @@ def week_number_of_month(date) -> int:
     """
     # Gets year week number of first day of the month and subtracts it from current year week number
     # Pretty clever
-    return date.isocalendar()[1] - date.replace(day=1).isocalendar()[1] + 1
+    return (date + timedelta(days=1)).isocalendar()[1] - date.replace(day=1).isocalendar()[1]
 
 
 def format_date_range(date_1: datetime.date, date_2: datetime.date) -> str:
