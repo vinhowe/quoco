@@ -18,7 +18,8 @@ def week_number_of_month(date) -> int:
     :param date:
     :return:
     """
-    # Gets year week number of first day of the month and subtracts it from current year week number
+    # Gets year week number of first day of the month and subtracts it from current
+    # year week number
     # Pretty clever
     return (date + timedelta(days=1)).isocalendar()[1] - date.replace(day=1).isocalendar()[1]
 
