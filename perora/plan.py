@@ -19,8 +19,10 @@ def week_number_of_month(date) -> int:
     :return:
     """
     # Gets year week number of first day of the month and subtracts it from current
-    # year week number
-    # Pretty clever
+    #  year week number
+    # The reason that we add a day is because the ISO calendar starts on Monday, and
+    #  thus we need to shift the week forward by one day. Sunday + 1 = Monday, which
+    #  gives us the alignment we want.
     return (date + timedelta(days=1)).isocalendar()[1] - date.replace(
         day=1
     ).isocalendar()[1]
