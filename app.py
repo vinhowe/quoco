@@ -1,6 +1,5 @@
 import sys
 import perora.spec
-import perora.journal
 import perora.plan
 
 
@@ -11,7 +10,6 @@ def main() -> None:
         print("Too few arguments")
 
     programs = {
-        "j": perora.journal.launch_journal_editor,
         "s": perora.spec.spec,
         "e": perora.spec.review_reminder,
         "p": perora.plan.whats_the_plan
