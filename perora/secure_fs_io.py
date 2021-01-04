@@ -47,7 +47,7 @@ def remote_file_exists(filename: str) -> bool:
             pass
         if exists is None:
             secure_print(
-                f"failed to check if file exists--retrying in {retry_wait_time_seconds}s"
+                f"failed to check if file exists, retrying in {retry_wait_time_seconds}s"
             )
             time.sleep(retry_wait_time_seconds)
     return exists
@@ -84,7 +84,7 @@ def _read_decrypt_file(filename: str, key: str) -> bytes:
         encrypted_file = _download_file(filename)
         if not encrypted_file:
             secure_print(
-                f"failed to download file--retrying in {retry_wait_time_seconds}s"
+                f"failed to download file, retrying in {retry_wait_time_seconds}s"
             )
             time.sleep(retry_wait_time_seconds)
     return fernet.decrypt(encrypted_file).decode("utf-8")
@@ -98,7 +98,7 @@ def _write_encrypt_file(content: str, filename: str, key: str) -> None:
         result = _upload_file(content_encrypted, filename)
         if not result:
             secure_print(
-                f"failed to upload file--retrying in {retry_wait_time_seconds}s"
+                f"failed to upload file, retrying in {retry_wait_time_seconds}s"
             )
             time.sleep(retry_wait_time_seconds)
 
@@ -125,7 +125,7 @@ def remote_file_delete(filename: str) -> bool:
             return False
         except (TransportError, ReadTimeout, ConnectionError, ProtocolError):
             secure_print(
-                f"failed to delete file--retrying in {retry_wait_time_seconds}s"
+                f"failed to delete file, retrying in {retry_wait_time_seconds}s"
             )
             time.sleep(retry_wait_time_seconds)
             continue
@@ -137,7 +137,7 @@ def remote_file_touch(filename: str) -> bool:
         result = _upload_file(b"", filename)
         if not result:
             secure_print(
-                f"failed to touch file--retrying in {retry_wait_time_seconds}s"
+                f"failed to touch file, retrying in {retry_wait_time_seconds}s"
             )
             time.sleep(retry_wait_time_seconds)
 
