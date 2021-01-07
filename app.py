@@ -1,6 +1,7 @@
 import sys
 import perora.spec
 import perora.plan
+import perora.manager
 
 
 def main() -> None:
@@ -12,7 +13,8 @@ def main() -> None:
     programs = {
         "s": perora.spec.spec,
         "e": perora.spec.review_reminder,
-        "p": perora.plan.whats_the_plan
+        "p": perora.plan.whats_the_plan,
+        "m": perora.manager.edit_catalog
     }
 
     selected_program = args[0][0]

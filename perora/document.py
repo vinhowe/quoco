@@ -15,7 +15,7 @@ from watchdog.events import (
 )
 from cryptography.fernet import InvalidToken
 
-from perora.fs_util import (
+from perora.util.fs import (
     data_path,
     per_ext_file,
     mkdir_if_not_exist,
@@ -105,6 +105,7 @@ def _flush_catalog(
     catalog: Union[Catalog, dict], service_name: str, key: str
 ) -> _write_encrypt_file:
     path = _documents_path(service_name, per_ext_file(catalog_file_name))
+    # TODO: When is it possible that catalog is a Dict?
     catalog_data = catalog.serialize() if catalog is Catalog else catalog
 
     # Should return whatever _write_encrypt_file does (right now, None)
@@ -112,8 +113,9 @@ def _flush_catalog(
 
 
 def _catalog(service_name: str, key: str) -> Catalog:
-    if service_name in _catalogs:
-        return _catalogs[service_name]
+    # TODO: Implement caching that regularly checks hash file on cloud
+    # if service_name in _catalogs:
+    #     return _catalogs[service_name]
 
     return _load_catalog_from_file(service_name, key)
 
@@ -223,6 +225,8 @@ def lock_path(service_name: str) -> str:
 
 
 def quit_if_lock_exists(service_name: str) -> None:
+    # TODO: DO NOT FORGET TO REMOVE THIS
+    return
     if remote_file_exists(lock_path(service_name)):
         secure_print(f"another instance of {service_name} service is running")
         exit(1)
