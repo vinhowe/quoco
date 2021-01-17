@@ -17,7 +17,7 @@ from google.cloud.storage import Blob
 from requests import ReadTimeout
 from urllib3.exceptions import ProtocolError
 
-from perora.fs_util import local_file_exists
+from perora.util.fs import local_file_exists
 from perora.secure_term import secure_print
 
 # TODO: Generate a new salt for every fresh installation instead
@@ -25,15 +25,12 @@ default_salt = "LCzJKR9jSyc42WHBrTaUMg=="
 
 service_account_json_path = "service-account.json"
 bucket_name = "perora-data"
-
 storage_client = storage.client.Client.from_service_account_json(
     service_account_json_path
 )
-
 bucket = storage_client.bucket(bucket_name)
 
 max_retries = 1
-
 retry_wait_time_seconds = 2
 
 
@@ -77,7 +74,7 @@ def _download_file(filename: str):
         return False
 
 
-def _read_decrypt_file(filename: str, key: str) -> bytes:
+def _read_decrypt_file(filename: str, key: str) -> str:
     fernet = Fernet(key)
     encrypted_file = None
     while not encrypted_file:
@@ -132,7 +129,7 @@ def remote_file_delete(filename: str) -> bool:
 
 
 def remote_file_touch(filename: str) -> bool:
-    result = None
+    result = False
     while not result:
         result = _upload_file(b"", filename)
         if not result:
@@ -140,6 +137,7 @@ def remote_file_touch(filename: str) -> bool:
                 f"failed to touch file, retrying in {retry_wait_time_seconds}s"
             )
             time.sleep(retry_wait_time_seconds)
+    return result
 
 
 def _gen_password_key(password: str, b64_salt: str = "LCzJKR9jSyc42WHBrTaUMg=="):

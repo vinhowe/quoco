@@ -14,7 +14,7 @@ from prompt_toolkit.completion import (
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding.vi_state import InputMode
 
-from perora.document_manager import (
+from perora.document import (
     open_service_interactive,
     write_document,
     edit_document,
@@ -22,14 +22,14 @@ from perora.document_manager import (
     rename_document,
     edit_documents,
 )
-from perora.fs_util import data_path, per_ext_file, local_file_exists
 from perora.secure_fs_io import (
     _read_decrypt_file,
     _write_encrypt_file,
     remote_file_exists,
 )
 from perora.secure_term import secure_print, add_lines, clear_term, secure_input
-from perora.util import Colors, terminal_format
+from perora.util.fs import data_path, per_ext_file, local_file_exists
+from perora.util.term import Colors, terminal_format
 
 spec_service_name = "spec"
 data_file_name = "data"
