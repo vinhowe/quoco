@@ -15,8 +15,8 @@ spec/inactive/*.md
 .lj/
 data/
 data-old/
-perora/email_prototype.py
-perora/prompt_prototype.py
+quoco/email_prototype.py
+quoco/prompt_prototype.py
 plan/development/spec_groups_prototype.ipynb
 __pycache__/
 

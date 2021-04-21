@@ -15,23 +15,23 @@ from watchdog.events import (
 )
 from cryptography.fernet import InvalidToken
 
-from perora.util.fs import (
+from .util.fs import (
     data_path,
     per_ext_file,
     mkdir_if_not_exist,
     local_file_exists,
+    _secure_delete_file,
 )
-from perora.secure_fs_io import (
-    _read_decrypt_file,
-    _write_encrypt_file,
+from .secure_fs_io import (
     _gen_password_key,
     default_salt,
-    _secure_delete_file,
     remote_file_exists,
-    remote_file_touch,
-    remote_file_delete,
+    _read_decrypt_object,
+    _write_encrypt_object,
+    touch_remote_file,
+    delete_remote_file,
 )
-from perora.secure_term import clear_term, add_lines, secure_print
+from .util.secure_term import clear_term, add_lines, secure_print
 
 catalog_file_name = "catalog"
 documents_dir_name = "documents"
@@ -91,7 +91,7 @@ def _load_catalog_from_file(service_name: str, key: str) -> Catalog:
     # Rethrows `cryptography` lib `InvalidToken` errors
     catalog = Catalog.deserialize(
         json.loads(
-            _read_decrypt_file(
+            _read_decrypt_object(
                 _documents_path(service_name, per_ext_file(catalog_file_name)), key
             )
         )
@@ -103,13 +103,15 @@ def _load_catalog_from_file(service_name: str, key: str) -> Catalog:
 
 def _flush_catalog(
     catalog: Union[Catalog, dict], service_name: str, key: str
-) -> _write_encrypt_file:
+) -> _write_encrypt_object:
     path = _documents_path(service_name, per_ext_file(catalog_file_name))
     # TODO: When is it possible that catalog is a Dict?
     catalog_data = catalog.serialize() if catalog is Catalog else catalog
 
     # Should return whatever _write_encrypt_file does (right now, None)
-    return _write_encrypt_file(json.dumps(catalog_data.serialize()), path, key)
+    return _write_encrypt_object(
+        json.dumps(catalog_data.serialize()).encode("utf8"), path, key
+    )
 
 
 def _catalog(service_name: str, key: str) -> Catalog:
@@ -162,13 +164,13 @@ def read_document(service_name: str, document_name: str, key: str):
     return (
         None
         if document_filename is None
-        else _read_decrypt_file(document_filename, key)
+        else _read_decrypt_object(document_filename, key)
     )
 
 
 def write_document(content: str, service_name: str, document_name: str, key: str):
     document_filename = _document_filename_or_create(service_name, document_name, key)
-    return _write_encrypt_file(content, document_filename, key)
+    return _write_encrypt_object(content, document_filename, key)
 
 
 def rename_document(
@@ -192,7 +194,7 @@ def delete_document(service_name: str, document_name: str, key: str) -> bool:
         return False
     del catalog.documents[document_name]
     _flush_catalog(catalog, service_name, key)
-    return remote_file_delete(document_filename)
+    return delete_remote_file(document_filename)
 
 
 def catalog_exists_or_create(service_name: str, salt: str) -> None:
@@ -225,19 +227,17 @@ def lock_path(service_name: str) -> str:
 
 
 def quit_if_lock_exists(service_name: str) -> None:
-    # TODO: DO NOT FORGET TO REMOVE THIS
-    return
     if remote_file_exists(lock_path(service_name)):
         secure_print(f"another instance of {service_name} service is running")
         exit(1)
 
 
 def create_lock(service_name: str) -> None:
-    remote_file_touch(lock_path(service_name))
+    touch_remote_file(lock_path(service_name))
 
 
 def release_lock(service_name: str) -> None:
-    remote_file_delete(lock_path(service_name))
+    touch_remote_file(lock_path(service_name))
 
 
 def open_service_interactive(service_name: str, salt: str = default_salt):

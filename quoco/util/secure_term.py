@@ -1,3 +1,4 @@
+# TODO: Destroy this global state once and for all
 lines_written = 0
 
 

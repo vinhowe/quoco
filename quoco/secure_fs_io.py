@@ -5,6 +5,7 @@ import tempfile
 import time
 from io import BytesIO
 from shutil import which
+from typing import AnyStr
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
@@ -17,14 +18,13 @@ from google.cloud.storage import Blob
 from requests import ReadTimeout
 from urllib3.exceptions import ProtocolError
 
-from perora.util.fs import local_file_exists
-from perora.secure_term import secure_print
+from quoco.util.secure_term import secure_print
 
 # TODO: Generate a new salt for every fresh installation instead
 default_salt = "LCzJKR9jSyc42WHBrTaUMg=="
 
 service_account_json_path = "service-account.json"
-bucket_name = "perora-data"
+bucket_name = "quoco-data"
 storage_client = storage.client.Client.from_service_account_json(
     service_account_json_path
 )
@@ -48,6 +48,16 @@ def remote_file_exists(filename: str) -> bool:
             )
             time.sleep(retry_wait_time_seconds)
     return exists
+
+
+def _read_local_file(filename: str, encoded=False) -> AnyStr:
+    with open(filename, "r" if encoded else "rb") as local_file:
+        return local_file.read()
+
+
+def _write_local_file(content: AnyStr, filename: str, encoded=False) -> None:
+    with open(filename, "w" if encoded else "wb") as local_file:
+        local_file.write(content)
 
 
 def _upload_file(content: bytes, filename: str) -> bool:
@@ -74,7 +84,7 @@ def _download_file(filename: str):
         return False
 
 
-def _read_decrypt_file(filename: str, key: str) -> str:
+def _read_decrypt_object(filename: str, key: str, encoded=True) -> AnyStr:
     fernet = Fernet(key)
     encrypted_file = None
     while not encrypted_file:
@@ -84,12 +94,15 @@ def _read_decrypt_file(filename: str, key: str) -> str:
                 f"failed to download file, retrying in {retry_wait_time_seconds}s"
             )
             time.sleep(retry_wait_time_seconds)
-    return fernet.decrypt(encrypted_file).decode("utf-8")
+    decrypted_bytes = fernet.decrypt(encrypted_file)
+    if encoded:
+        return decrypted_bytes.decode("utf-8")
+    return decrypted_bytes
 
 
-def _write_encrypt_file(content: str, filename: str, key: str) -> None:
+def _write_encrypt_object(content: bytes, filename: str, key: str) -> None:
     fernet = Fernet(key)
-    content_encrypted = fernet.encrypt(content.encode())
+    content_encrypted = fernet.encrypt(content)
     result = None
     while not result:
         result = _upload_file(content_encrypted, filename)
@@ -100,19 +113,7 @@ def _write_encrypt_file(content: str, filename: str, key: str) -> None:
             time.sleep(retry_wait_time_seconds)
 
 
-def _secure_delete_file(path_str) -> None:
-    if not local_file_exists(path_str):
-        return
-
-    if which("shred") is not None:
-        subprocess.run(f"shred -u {path_str}", shell=True)
-    elif which("srm") is not None:
-        subprocess.run(f"srm {path_str}", shell=True)
-    else:
-        os.remove(path_str)
-
-
-def remote_file_delete(filename: str) -> bool:
+def delete_remote_file(filename: str) -> bool:
     blob: Blob = bucket.blob(filename)
     while True:
         try:
@@ -128,7 +129,7 @@ def remote_file_delete(filename: str) -> bool:
             continue
 
 
-def remote_file_touch(filename: str) -> bool:
+def touch_remote_file(filename: str) -> bool:
     result = False
     while not result:
         result = _upload_file(b"", filename)
@@ -160,7 +161,7 @@ def _gen_password_key(password: str, b64_salt: str = "LCzJKR9jSyc42WHBrTaUMg==")
     return base64.urlsafe_b64encode(kdf.derive(password_encoded))
 
 
-def _secure_delete_file(path_str) -> None:
+def _secure_delete_local_file(path_str) -> None:
     if not remote_file_exists(path_str):
         return
 
@@ -173,7 +174,7 @@ def _secure_delete_file(path_str) -> None:
 
 
 def _remove_temp_file(file_obj: tempfile.NamedTemporaryFile, path_str: str) -> None:
-    _secure_delete_file(path_str)
+    _secure_delete_local_file(path_str)
 
     try:
         file_obj.close()

@@ -6,7 +6,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.application import get_app
 from prompt_toolkit.key_binding.vi_state import InputMode
 
-from perora.secure_term import secure_print, clear_term
+from quoco.util.secure_term import secure_print, clear_term
 
 import hashlib
 import time
@@ -100,7 +100,7 @@ def main() -> None:
     try:
         while True:
             secure_print()
-            secure_print("perora attention log")
+            secure_print("quoco attention log")
             secure_print()
             print_log_history(_max_last_log_entries)
             secure_print()

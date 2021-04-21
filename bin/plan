@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import perora.plan
+import quoco.plan
 import sys
 
 def run_plan():
@@ -8,7 +8,7 @@ def run_plan():
     if len(args) < 1:
         print("Too few arguments")
         return
-    perora.plan.whats_the_plan(" ".join(args))
+    quoco.plan.whats_the_plan(" ".join(args))
 
 if __name__ == "__main__":
     run_plan()

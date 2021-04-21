@@ -1,6 +1,7 @@
 import sys
-import perora.spec
-import perora.plan
+import quoco.spec
+import quoco.plan
+import quoco.quocofs_migration
 
 
 def main() -> None:
@@ -10,9 +11,12 @@ def main() -> None:
         print("Too few arguments")
 
     programs = {
-        "s": perora.spec.spec,
-        "e": perora.spec.review_reminder,
-        "p": perora.plan.whats_the_plan
+        "s": quoco.spec.spec,
+        "e": quoco.spec.review_reminder,
+        "p": quoco.plan.whats_the_plan,
+        "m": quoco.quocofs_migration.edit_catalog,
+        "d": quoco.quocofs_migration.download_documents,
+        "G": quoco.quocofs_migration.migrate,
     }
 
     selected_program = args[0][0]

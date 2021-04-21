@@ -1,5 +1,7 @@
 import os
+import subprocess
 from pathlib import Path
+from shutil import which
 
 data_dir = "data"
 per_ext = "per"
@@ -33,3 +35,15 @@ def data_path(service_name: str, *paths: str) -> str:
     mkdir_if_not_exist(abs_data_subdir)
 
     return os.path.join(abs_data_subdir, *paths)
+
+
+def _secure_delete_file(path_str) -> None:
+    if not local_file_exists(path_str):
+        return
+
+    if which("shred") is not None:
+        subprocess.run(f"shred -u {path_str}", shell=True)
+    elif which("srm") is not None:
+        subprocess.run(f"srm {path_str}", shell=True)
+    else:
+        os.remove(path_str)
