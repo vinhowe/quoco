@@ -1,12 +1,3 @@
-# lifesystem
-My scattered thoughts on how to navigate life productively.
+# quoco
 
-## Philosophy: personal effectiveness is a design problem
-
-## Tools
-
-### Spec
-
-![](screenshots/perora-spec.png)
-
-### Plan
+My toy platform for time-based documents built on my toy object-based filesystem, [quocofs](https://github.com/vinhowe/quocofs).
