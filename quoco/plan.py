@@ -5,10 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, date
 from typing import List, Optional, Type
 
-import quocofs
 from dateutil.relativedelta import *
 
-from quoco.quocofs_manager import QuocoFsManager
+from .quocofs_manager import QuocoFsManager
 
 PLAN_CATALOG_NAME = "plan_catalog"
 PLAN_DATE_FORMAT = "%d-%m-%Y"
@@ -83,7 +82,10 @@ class CachePlan(PlanEntryWithDate):
         )
 
     def default_content(self):
-        pretty_name = f"cache: {self.plan_date.strftime('%a').lower()} {self.plan_date.day} {self.plan_date.strftime('%b').lower()} {self.plan_date.year}"
+        pretty_name = (
+            f"cache: {self.plan_date.strftime('%a').lower()}"
+            f" {self.plan_date.day} {self.plan_date.strftime('%b').lower()} {self.plan_date.year}"
+        )
         return f"# {pretty_name}\n\n\n"
 
 
@@ -176,10 +178,10 @@ class WeekPlan(PlanEntryWithDate):
         )
 
     @staticmethod
-    def _week_number_of_month(date) -> int:
+    def _week_number_of_month(week_date) -> int:
         """
         Thanks https://www.mytecbits.com/internet/python/week-number-of-month
-        :param date:
+        :param week_date:
         :return:
         """
         # Gets year week number of first day of the month and subtracts it from current
@@ -187,7 +189,7 @@ class WeekPlan(PlanEntryWithDate):
         # The reason that we add a day is because the ISO calendar starts on Monday, and
         #  thus we need to shift the week forward by one day. Sunday + 1 = Monday, which
         #  gives us the alignment we want.
-        return (date + timedelta(days=1)).isocalendar()[1] - date.replace(
+        return (week_date + timedelta(days=1)).isocalendar()[1] - week_date.replace(
             day=1
         ).isocalendar()[1]
 
@@ -405,11 +407,8 @@ def _load_plan_catalog_interactive():
     if catalog_id:
         catalog_data = json.loads(manager.session.object(catalog_id))
     else:
-        # TODO: Figure out why I have to use bytes() here
-        catalog_id = bytes(
-            manager.session.create_object(
-                json.dumps(DEFAULT_PLAN_CATALOG_DATA).encode("utf-8")
-            )
+        catalog_id = manager.session.create_object(
+            json.dumps(DEFAULT_PLAN_CATALOG_DATA).encode("utf-8")
         )
         manager.session.set_object_name(catalog_id, PLAN_CATALOG_NAME)
         catalog_data = DEFAULT_PLAN_CATALOG_DATA
@@ -445,6 +444,7 @@ def _last_nth_entry_in_catalog(
     if n >= len(date_descending_entries):
         return None
 
+    # noinspection PyArgumentList
     return entry_type(date_descending_entries[n])
 
 
@@ -504,13 +504,14 @@ def whats_the_plan(args: str = None) -> None:
                 continue
 
             if issubclass(entry_type, PlanEntryWithDate):
+                # noinspection PyArgumentList
                 entry = entry_type(plan_date)
                 if len(plan_arg) > 1:
                     operator = plan_arg[1]
                     value = abs(int(plan_arg[2:]))
                     if operator in ["+", "-"]:
-                        # Yes eval is potentially dangerous, but both operator and value are checked and I can't think of
-                        #  any specific vector for abuse here anyway.
+                        # Yes eval is potentially dangerous, but both operator and value are checked and I can't think
+                        # of any specific vector for abuse here anyway.
                         signed_difference = eval(f"{operator}{value}")
                         entry.plan_date = entry.date_add(signed_difference)
                     elif operator == "~":

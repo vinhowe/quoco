@@ -2,13 +2,9 @@ import json
 import warnings
 from hashlib import sha256
 from pathlib import Path
-from time import sleep
-from tempfile import NamedTemporaryFile
 from glob import glob
-from typing import Callable, Optional, Type
+from typing import Callable, Optional, Type, Union
 
-from .document import open_service_interactive, read_document
-from .secure_fs_io import _secure_delete_local_file
 from .plan import (
     PlanEntryWithDate,
     _load_plan_catalog_interactive,
@@ -17,36 +13,9 @@ from .plan import (
     PLAN_CATALOG_ENTRIES_KEY,
 )
 
-MIGRATION_PATH_NAME = ".migration"
 
-
-def download_documents(service_name: str) -> None:
-    warnings.warn("Deprecated", DeprecationWarning)
-
-    # TODO(vinhowe): make sure that we're shredding these files
-    print("downloading all documents into .migration")
-
-    migration_path = Path(MIGRATION_PATH_NAME, service_name)
-    if not migration_path.exists():
-        migration_path.mkdir(parents=True)
-
-    key, catalog = open_service_interactive(service_name)
-    with open(Path(migration_path, "catalog.json"), "w") as catalog_file:
-        json.dump(catalog.serialize(), catalog_file, indent=4)
-
-    for document in catalog.documents.values():
-        document_content = read_document(service_name, document.name, key)
-        if not document_content:
-            continue
-
-        document_filename = f"{document.name}.md"
-        print(document_filename)
-        with open(Path(migration_path, document_filename), "w") as doc_file:
-            doc_file.write(document_content)
-
-
-def apply_migration(service_name: str, migration: Callable):
-    migration_path = Path(MIGRATION_PATH_NAME, service_name)
+def apply_migration(service_name: str, migration: Callable, path: Union[str, Path]):
+    migration_path = Path(path, service_name)
 
     catalog_path = Path(migration_path, "catalog.json")
     with open(catalog_path) as catalog_file:
@@ -74,21 +43,6 @@ def create_hashes(catalog_data: dict, migration_path: str) -> None:
             catalog_data["documents"][Path(document_file_name).stem][
                 "hash"
             ] = document_hash
-
-
-def edit_catalog(service_name: str) -> None:
-    with NamedTemporaryFile(suffix=".json", mode="w") as temp_catalog_file:
-        key, catalog = open_service_interactive(service_name)
-        data = json.dumps(catalog.serialize(), indent=4)
-        temp_catalog_file.write(data)
-        print(data)
-        print(temp_catalog_file.name)
-        try:
-            while True:
-                sleep(1)
-        except KeyboardInterrupt:
-            print("interrupted, deleting file")
-        _secure_delete_local_file(temp_catalog_file.name)
 
 
 def _debug_catalog(catalog_path: str):
@@ -180,5 +134,5 @@ def migrate_plan_data_to_new_format(old_catalog: dict, migration_path: str):
         )
 
 
-def migrate(service_name: str):
-    apply_migration(service_name, migrate_plan_data_to_new_format)
+def migrate_plan(path):
+    apply_migration("plan", migrate_plan_data_to_new_format, path)

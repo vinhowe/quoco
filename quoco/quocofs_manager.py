@@ -8,7 +8,7 @@ from typing import List, Union
 
 import quocofs
 
-from quoco.util.secure_term import add_lines, secure_print, clear_term
+from .util.secure_term import add_lines, secure_print, clear_term
 from .util.fs import local_file_exists
 
 DEFAULT_EDITOR_CONFIG = {"orientation": "horizontal"}
@@ -140,8 +140,6 @@ class QuocoFsManager:
 
         command = f'{vim_path} + "+{vi_secure_settings_string}" {files_argument}'
 
-        # subprocess.call(command, shell=True)
-        paths_map = {v["path"]: v["id"] for v in documents_read_info}
         subprocess.call(command, shell=True)
 
     def edit_document_vim(self, name: bytes) -> None:

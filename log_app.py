@@ -6,7 +6,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.application import get_app
 from prompt_toolkit.key_binding.vi_state import InputMode
 
-from quoco.util.secure_term import secure_print, clear_term
+from .util.secure_term import secure_print, clear_term
 
 import hashlib
 import time
