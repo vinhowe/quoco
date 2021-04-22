@@ -1,24 +1,12 @@
-log.txt
-log_nc_1.txt
-service-account.json
 venv-*
 reminder_config.json
 *.swp
 *.code-workspace
 *.out
 venv/
-spec/*.md
-spec/inactive/*.md
-.ljcatalog
-*.lj
-.sj/
-.lj/
-data/
-data-old/
-quoco/email_prototype.py
-quoco/prompt_prototype.py
-plan/development/spec_groups_prototype.ipynb
 __pycache__/
+.migration*/
+log*.txt
 
 # From https://github.com/github/gitignore/blob/master/Python.gitignore
 
