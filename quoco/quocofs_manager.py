@@ -67,7 +67,7 @@ class QuocoFsManager:
             return password
 
         while True:
-            password = clearable_password_prompt("enter your password:")
+            password = clearable_password_prompt("enter your password: ")
             if not repeat or password == clearable_password_prompt(
                 "repeat your password: "
             ):
