@@ -480,6 +480,7 @@ class Catalog:
         return id, entry_type(entry_date)
 
 
+# TODO: Break this up
 def whats_the_plan(args: str = None) -> None:
     catalog = Catalog.from_quocofs()
 
