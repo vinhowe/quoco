@@ -42,6 +42,7 @@ class QuocoFsManager:
         # (though I think there are a few more major changes we'd need to make before quoco works on Windows)
         return Path(xdg_data_home(), "quoco")
 
+    # TODO: Move the default config path out of this class because we'll store things like plan templates there
     @staticmethod
     def default_config_path():
         # TODO(vinhowe): Make this work on Windows too
