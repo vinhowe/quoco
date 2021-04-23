@@ -408,7 +408,9 @@ class Catalog:
     @staticmethod
     def from_quocofs():
         manager = QuocoFsManager(
-            QuocoFsManager.default_base_path(), QuocoFsManager.DEFAULT_SALT
+            QuocoFsManager.default_data_path(),
+            QuocoFsManager.default_config_path(),
+            QuocoFsManager.DEFAULT_SALT,
         )
 
         catalog_id = manager.session.object_id_with_name(PLAN_CATALOG_NAME)

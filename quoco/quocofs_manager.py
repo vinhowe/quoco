@@ -5,6 +5,7 @@ from base64 import b64decode
 from getpass import getpass
 from pathlib import Path
 from typing import List, Union
+from xdg import xdg_data_home, xdg_config_home
 
 import quocofs
 
@@ -21,20 +22,30 @@ class QuocoFsManager:
 
     session: quocofs.Session
 
-    def __init__(self, base_path: Union[str, Path], salt: bytes):
-        self._base_path = base_path if base_path is Path else Path(base_path)
-        self._data_path = Path(base_path, "data")
+    def __init__(
+        self, data_path: Union[str, Path], config_path: Union[str, Path], salt: bytes
+    ):
+        self._data_path = data_path if data_path is Path else Path(data_path)
+        self._config_path = config_path if config_path is Path else Path(config_path)
         self._salt = salt
         self.initialize_session_interactive()
 
-    def create_data_directory(self):
-        Path(self._base_path, "data").mkdir(parents=True, exist_ok=True)
+    def create_data_path(self):
+        Path(self._data_path).mkdir(parents=True, exist_ok=True)
+
+    def create_config_path(self):
+        Path(self._config_path).mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def default_base_path():
+    def default_data_path():
         # TODO(vinhowe): Make this work on Windows too
         # (though I think there are a few more major changes we'd need to make before quoco works on Windows)
-        return Path(Path.home(), ".quoco")
+        return Path(xdg_data_home(), "quoco")
+
+    @staticmethod
+    def default_config_path():
+        # TODO(vinhowe): Make this work on Windows too
+        return Path(xdg_config_home(), "quoco")
 
     def is_initialized(self):
         return self.session is not None
@@ -64,14 +75,26 @@ class QuocoFsManager:
             secure_print("passwords don't match, try again")
             secure_print()
 
+    def _create_remote_accessor(self):
+        # TODO: Extend this once we add more remote accessors (S3, Azure, etc.)
+        google_service_account_path = Path(
+            self._config_path, "google-service-account.json"
+        )
+        # TODO: Raise custom exception when we can't find a key file.
+        #  We can have an offline mode once we actually handle conflicts instead of just overwriting from remote at the
+        #  beginning of every session.
+        return quocofs.GoogleStorageAccessorConfig(
+            "quocofs", str(google_service_account_path)
+        )
+
     def initialize_session(self, password: str):
-        self.create_data_directory()
+        self.create_data_path()
+        self.create_config_path()
+
         self.session = quocofs.Session(
             str(self._data_path),
             self.generate_key(password),
-            quocofs.GoogleStorageAccessorConfig(
-                "quocofs", str(Path(self._base_path, "service-account.json"))
-            ),
+            self._create_remote_accessor(),
         )
 
     def initialize_session_interactive(self):
