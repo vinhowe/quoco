@@ -398,70 +398,85 @@ PLAN_TYPES: List[Type[PlanEntry]] = [
 ]
 
 
-def _load_plan_catalog_interactive():
-    manager = QuocoFsManager(
-        QuocoFsManager.default_base_path(), QuocoFsManager.DEFAULT_SALT
-    )
+class Catalog:
+    def __init__(self, data: dict, id: bytes, manager: QuocoFsManager):
+        self.data = data
+        self.id = id
+        self.manager = manager
+        self.order_cache = {}
 
-    catalog_id = manager.session.object_id_with_name(PLAN_CATALOG_NAME)
-    if catalog_id:
-        catalog_data = json.loads(manager.session.object(catalog_id))
-    else:
-        catalog_id = manager.session.create_object(
-            json.dumps(DEFAULT_PLAN_CATALOG_DATA).encode("utf-8")
+    @staticmethod
+    def from_quocofs():
+        manager = QuocoFsManager(
+            QuocoFsManager.default_base_path(), QuocoFsManager.DEFAULT_SALT
         )
-        manager.session.set_object_name(catalog_id, PLAN_CATALOG_NAME)
-        catalog_data = DEFAULT_PLAN_CATALOG_DATA
 
-    return manager, catalog_data, catalog_id
+        catalog_id = manager.session.object_id_with_name(PLAN_CATALOG_NAME)
+        if catalog_id:
+            catalog_data = json.loads(manager.session.object(catalog_id))
+        else:
+            catalog_id = manager.session.create_object(
+                json.dumps(DEFAULT_PLAN_CATALOG_DATA).encode("utf-8")
+            )
+            manager.session.set_object_name(catalog_id, PLAN_CATALOG_NAME)
+            catalog_data = DEFAULT_PLAN_CATALOG_DATA
 
+        return Catalog(catalog_data, catalog_id, manager)
 
-# TODO: This, but object-oriented
-def _plan_entry_in_catalog(entry: PlanEntry, catalog_data):
-    return next(
-        (
-            (bytes.fromhex(x[0]), x[1])
-            for x in catalog_data[PLAN_CATALOG_ENTRIES_KEY].items()
-            # https://stackoverflow.com/a/41579450/1979008
-            if entry.serialize().items() <= x[1].items()
-        ),
-        (None, None),
-    )
+    def _get(self, entry: PlanEntry) -> tuple[Optional[bytes], Optional[dict]]:
+        return next(
+            (
+                (bytes.fromhex(x[0]), x[1])
+                for x in self.data[PLAN_CATALOG_ENTRIES_KEY].items()
+                # https://stackoverflow.com/a/41579450/1979008
+                if entry.serialize().items() <= x[1].items()
+            ),
+            (None, None),
+        )
 
+    def get_id(self, entry: PlanEntry):
+        return self._get(entry)[0]
 
-def _last_nth_entry_in_catalog(
-    entry_type: Type[PlanEntryWithDate], n: int, catalog_data
-) -> Optional[PlanEntryWithDate]:
-    date_descending_entries = sorted(
-        (
-            datetime.strptime(e["date"], PLAN_DATE_FORMAT)
-            for e in catalog_data[PLAN_CATALOG_ENTRIES_KEY].values()
-            if e["type"] == entry_type.type_name
-        ),
-        reverse=True,
-    )
+    def put(self, entry: PlanEntry, id: bytes):
+        if self.get_id(entry) is not None:
+            return
 
-    if n >= len(date_descending_entries):
-        return None
+        hex_id = id.hex()
+        self.data[PLAN_CATALOG_ENTRIES_KEY][hex_id] = entry.serialize() | {"id": hex_id}
 
-    # noinspection PyArgumentList
-    return entry_type(date_descending_entries[n])
+    # TODO: Use SQLite instead of JSON and make everything more and more and more and more efficient
+    def _order_for_date_type(self, entry_type: Type[PlanEntryWithDate]):
+        order = self.order_cache.get(entry_type.type_name)
+        if order is not None:
+            return order
 
+        order = sorted(
+            (
+                datetime.strptime(e["date"], PLAN_DATE_FORMAT)
+                for e in self.data[PLAN_CATALOG_ENTRIES_KEY].values()
+                if e["type"] == entry_type.type_name
+            ),
+            reverse=True,
+        )
 
-def _put_plan_entry_in_catalog(
-    document_id: bytes,
-    plan: PlanEntry,
-    catalog_data: dict,
-):
-    if _plan_entry_in_catalog(plan, catalog_data)[0] is not None:
-        return catalog_data
-    hex_id = document_id.hex()
-    catalog_data[PLAN_CATALOG_ENTRIES_KEY][hex_id] = plan.serialize() | {"id": hex_id}
-    return catalog_data
+        self.order_cache[entry_type.type_name] = order
+        return order
+
+    def get_nth(
+        self, entry_type: Type[PlanEntryWithDate], n: int
+    ) -> Optional[PlanEntryWithDate]:
+
+        order = self._order_for_date_type(entry_type)
+
+        if n >= len(order):
+            return None
+
+        # noinspection PyArgumentList
+        return entry_type(order[n])
 
 
 def whats_the_plan(args: str = None) -> None:
-    manager, catalog_data, catalog_id = _load_plan_catalog_interactive()
+    catalog = Catalog.from_quocofs()
 
     default_layout = "p d s c c+1"
     cache_triad_layout = "c-1 c c+1"
@@ -490,7 +505,7 @@ def whats_the_plan(args: str = None) -> None:
         else datetime.now()
     )
 
-    with manager:
+    with catalog.manager:
         names_to_open = []
 
         for plan_arg in plan_args:
@@ -515,9 +530,7 @@ def whats_the_plan(args: str = None) -> None:
                         signed_difference = eval(f"{operator}{value}")
                         entry.plan_date = entry.date_add(signed_difference)
                     elif operator == "~":
-                        entry = _last_nth_entry_in_catalog(
-                            entry_type, value, catalog_data
-                        )
+                        entry = catalog.get_nth(entry_type, value)
                         if entry is None:
                             print(
                                 f'Couldn\'t find last entry #{value} of type "{entry_type.type_name}"',
@@ -527,19 +540,17 @@ def whats_the_plan(args: str = None) -> None:
             else:
                 entry = entry_type()
 
-            document_id, _ = _plan_entry_in_catalog(entry, catalog_data)
+            document_id = catalog.get_id(entry)
 
             if document_id is None:
-                document_id = manager.session.create_object(
+                document_id = catalog.manager.session.create_object(
                     entry.default_content().encode("utf-8")
                 )
-                catalog_data = _put_plan_entry_in_catalog(
-                    document_id, entry, catalog_data
-                )
+                catalog.put(entry, document_id)
 
             names_to_open.append(document_id)
 
-        manager.edit_documents_vim(names_to_open)
-        manager.session.modify_object(
-            catalog_id, json.dumps(catalog_data).encode("utf-8")
+        catalog.manager.edit_documents_vim(names_to_open)
+        catalog.manager.session.modify_object(
+            catalog.id, json.dumps(catalog.data).encode("utf-8")
         )

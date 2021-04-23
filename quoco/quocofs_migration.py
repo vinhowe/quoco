@@ -7,10 +7,9 @@ from typing import Callable, Optional, Type, Union
 
 from .plan import (
     PlanEntryWithDate,
-    _load_plan_catalog_interactive,
     PlanEntry,
     PLAN_TYPES,
-    PLAN_CATALOG_ENTRIES_KEY,
+    PLAN_CATALOG_ENTRIES_KEY, Catalog,
 )
 
 
@@ -109,9 +108,9 @@ def plan_from_legacy_name(legacy_name: str) -> Optional[PlanEntry]:
 
 
 def migrate_plan_data_to_new_format(old_catalog: dict, migration_path: str):
-    manager, catalog_data, catalog_id = _load_plan_catalog_interactive()
+    catalog = Catalog.from_quocofs()
 
-    with manager:
+    with catalog.manager:
         for document in old_catalog["documents"].values():
             plan_name = document["name"]
             plan_instance = plan_from_legacy_name(plan_name)
@@ -122,15 +121,15 @@ def migrate_plan_data_to_new_format(old_catalog: dict, migration_path: str):
             # document_id = document["obfuscatedName"]
             with open(Path(migration_path, f"{plan_name}.md"), "rb") as document_file:
                 document_id = bytes.hex(
-                    bytes(manager.session.create_object(document_file.read()))
+                    bytes(catalog.manager.session.create_object(document_file.read()))
                 )
 
-            catalog_data[PLAN_CATALOG_ENTRIES_KEY][
+            catalog.data[PLAN_CATALOG_ENTRIES_KEY][
                 document_id
             ] = plan_instance.serialize() | {"id": document_id}
 
-        manager.session.modify_object(
-            catalog_id, json.dumps(catalog_data).encode("utf-8")
+        catalog.manager.session.modify_object(
+            catalog.id, json.dumps(catalog.data).encode("utf-8")
         )
 
 
