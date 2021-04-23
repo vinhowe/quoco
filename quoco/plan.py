@@ -408,7 +408,9 @@ class Catalog:
     @staticmethod
     def from_quocofs():
         manager = QuocoFsManager(
-            QuocoFsManager.default_base_path(), QuocoFsManager.DEFAULT_SALT
+            QuocoFsManager.default_data_path(),
+            QuocoFsManager.default_config_path(),
+            QuocoFsManager.DEFAULT_SALT,
         )
 
         catalog_id = manager.session.object_id_with_name(PLAN_CATALOG_NAME)
@@ -452,11 +454,12 @@ class Catalog:
 
         order = sorted(
             (
-                datetime.strptime(e["date"], PLAN_DATE_FORMAT)
-                for e in self.data[PLAN_CATALOG_ENTRIES_KEY].values()
+                (id, datetime.strptime(e["date"], PLAN_DATE_FORMAT))
+                for id, e in self.data[PLAN_CATALOG_ENTRIES_KEY].items()
                 if e["type"] == entry_type.type_name
             ),
             reverse=True,
+            key=lambda a: a[1],
         )
 
         self.order_cache[entry_type.type_name] = order
@@ -464,17 +467,20 @@ class Catalog:
 
     def get_nth(
         self, entry_type: Type[PlanEntryWithDate], n: int
-    ) -> Optional[PlanEntryWithDate]:
+    ) -> Optional[tuple[str, PlanEntryWithDate]]:
 
         order = self._order_for_date_type(entry_type)
 
         if n >= len(order):
             return None
 
+        id, entry_date = order[n]
+
         # noinspection PyArgumentList
-        return entry_type(order[n])
+        return id, entry_type(entry_date)
 
 
+# TODO: Break this up
 def whats_the_plan(args: str = None) -> None:
     catalog = Catalog.from_quocofs()
 
@@ -530,21 +536,44 @@ def whats_the_plan(args: str = None) -> None:
                         signed_difference = eval(f"{operator}{value}")
                         entry.plan_date = entry.date_add(signed_difference)
                     elif operator == "~":
-                        entry = catalog.get_nth(entry_type, value)
-                        if entry is None:
+                        id_entry = catalog.get_nth(entry_type, value)
+                        if id_entry is None:
                             print(
                                 f'Couldn\'t find last entry #{value} of type "{entry_type.type_name}"',
                                 file=sys.stderr,
                             )
                             return
+                        entry = id_entry[1]
             else:
                 entry = entry_type()
 
             document_id = catalog.get_id(entry)
 
             if document_id is None:
+                default_content = entry.default_content()
+
+                if issubclass(entry_type, PlanEntryWithDate):
+                    last_entry = catalog.get_nth(entry.__class__, 0)
+                    if last_entry:
+                        id, _ = last_entry
+                        # TODO: This is inefficient but it might not really matter
+                        content = "\n".join(
+                            map(
+                                lambda s: ";" + s,
+                                "\n".join(
+                                    catalog.manager.session.object(bytes.fromhex(id))
+                                    .decode("utf-8")
+                                    .splitlines()[1:]
+                                )
+                                .lstrip()
+                                .splitlines(),
+                            )
+                        )
+                        if content:
+                            default_content += content
+
                 document_id = catalog.manager.session.create_object(
-                    entry.default_content().encode("utf-8")
+                    default_content.encode("utf-8")
                 )
                 catalog.put(entry, document_id)
 

@@ -9,7 +9,8 @@ from .plan import (
     PlanEntryWithDate,
     PlanEntry,
     PLAN_TYPES,
-    PLAN_CATALOG_ENTRIES_KEY, Catalog,
+    PLAN_CATALOG_ENTRIES_KEY,
+    Catalog,
 )
 
 

@@ -6,8 +6,7 @@ on:
     paths:
       - '**.py'
     branches:
-      - develop
-      - master
+      - main
   pull_request:
     paths:
       - '**.py'
