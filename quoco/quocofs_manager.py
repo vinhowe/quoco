@@ -122,7 +122,7 @@ class QuocoFsManager:
                 document_config = {**document_config, **json.load(document_config_data)}
 
         for id in ids:
-            path = self.session.object_temp_file(id)
+            path = self.session.object_temp_file(id, "md")
             documents_read_info.append(
                 {
                     "path": path,
