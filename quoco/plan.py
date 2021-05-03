@@ -140,8 +140,9 @@ class WeekPlan(PlanEntryWithDate):
     legacy_name_format = f"{type_name}_%d_%m_%Y"
 
     def plan_date_from_date(self):
+        sunday_first_plan_date = self.plan_date + timedelta(days=1)
         return datetime.fromisocalendar(
-            self.plan_date.year, self.plan_date.isocalendar()[1], 1
+            sunday_first_plan_date.year, sunday_first_plan_date.isocalendar()[1], 1
         ).date()
 
     def name(self):
