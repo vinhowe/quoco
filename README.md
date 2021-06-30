@@ -9,7 +9,7 @@ Assuming an updated version of Rust (I'm on 1.51.0 as of writing) and Python 3.9
 pip install git+https://github.com/vinhowe/quoco.git
 ```
 
-For now you'll need a GCP service account JSON file at `(~/.config|$XDG_CONFIG_HOME)/quoco/google-service-account.json.`,
+For now you'll need a GCP service account JSON file at `(~/.config|$XDG_CONFIG_HOME)/quoco/google-service-account.json`,
 with access to a Google Storage bucket named `quocofs`.
 
 
