@@ -400,20 +400,13 @@ PLAN_TYPES: List[Type[PlanEntry]] = [
 
 
 class Catalog:
-    def __init__(self, data: dict, id: bytes, manager: QuocoFsManager):
+    def __init__(self, data: dict, id: bytes):
         self.data = data
         self.id = id
-        self.manager = manager
         self.order_cache = {}
 
     @staticmethod
-    def from_quocofs():
-        manager = QuocoFsManager(
-            QuocoFsManager.default_data_path(),
-            QuocoFsManager.default_config_path(),
-            QuocoFsManager.DEFAULT_SALT,
-        )
-
+    def from_quocofs(manager: QuocoFsManager):
         catalog_id = manager.session.object_id_with_name(PLAN_CATALOG_NAME)
         if catalog_id:
             catalog_data = json.loads(manager.session.object(catalog_id))
@@ -423,8 +416,7 @@ class Catalog:
             )
             manager.session.set_object_name(catalog_id, PLAN_CATALOG_NAME)
             catalog_data = DEFAULT_PLAN_CATALOG_DATA
-
-        return Catalog(catalog_data, catalog_id, manager)
+        return Catalog(catalog_data, catalog_id)
 
     def _get(self, entry: PlanEntry) -> tuple[Optional[bytes], Optional[dict]]:
         return next(
@@ -483,7 +475,11 @@ class Catalog:
 
 # TODO: Break this up
 def whats_the_plan(args: str = None) -> None:
-    catalog = Catalog.from_quocofs()
+    manager = QuocoFsManager(
+        QuocoFsManager.default_data_path(),
+        QuocoFsManager.default_config_path(),
+        QuocoFsManager.DEFAULT_SALT,
+    )
 
     default_layout = "p d s c c+1"
     cache_triad_layout = "c-1 c c+1"
@@ -512,7 +508,8 @@ def whats_the_plan(args: str = None) -> None:
         else datetime.now()
     )
 
-    with catalog.manager:
+    with manager:
+        catalog = Catalog.from_quocofs(manager)
         names_to_open = []
 
         for plan_arg in plan_args:
@@ -562,7 +559,7 @@ def whats_the_plan(args: str = None) -> None:
                             map(
                                 lambda s: ";" + s,
                                 "\n".join(
-                                    catalog.manager.session.object(bytes.fromhex(id))
+                                    manager.session.object(bytes.fromhex(id))
                                     .decode("utf-8")
                                     .splitlines()[1:]
                                 )
@@ -573,14 +570,14 @@ def whats_the_plan(args: str = None) -> None:
                         if content:
                             default_content += content
 
-                document_id = catalog.manager.session.create_object(
+                document_id = manager.session.create_object(
                     default_content.encode("utf-8")
                 )
                 catalog.put(entry, document_id)
 
             names_to_open.append(document_id)
 
-        catalog.manager.edit_documents_vim(names_to_open)
-        catalog.manager.session.modify_object(
+        manager.edit_documents_vim(names_to_open)
+        manager.session.modify_object(
             catalog.id, json.dumps(catalog.data).encode("utf-8")
         )
