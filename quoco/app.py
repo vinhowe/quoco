@@ -18,6 +18,15 @@ def decrypt(filename):
             wfile.write(quocofs.loads(rfile.read(), key))
 
 
+def encrypt(filename):
+    key = quocofs.key(
+        QuocoFsManager.prompt_password(), b64decode(QuocoFsManager.DEFAULT_SALT)
+    )
+    with open(filename, "rb") as rfile:
+        with open(filename.replace(".decrypted", ""), "wb") as wfile:
+            wfile.write(quocofs.dumps(rfile.read(), key))
+
+
 def decrypt_hashes(filename):
     key = quocofs.key(
         QuocoFsManager.prompt_password(), b64decode(QuocoFsManager.DEFAULT_SALT)
@@ -36,12 +45,17 @@ def decrypt_hashes(filename):
 def main():
     parser = argparse.ArgumentParser(description="Quoco CLI")
     parser.add_argument("--decrypt")
+    parser.add_argument("--encrypt")
     parser.add_argument("--decrypt-hashes")
     parser.add_argument("--migrate")
     args, unknown = parser.parse_known_args()
 
     if args.decrypt:
         decrypt(args.decrypt)
+        return
+
+    if args.encrypt:
+        encrypt(args.encrypt)
         return
 
     if args.decrypt_hashes:
