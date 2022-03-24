@@ -1,19 +1,26 @@
 import json
 import subprocess
 import sys
+import copy
 from base64 import b64decode
 from getpass import getpass
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Dict, Any
 from xdg import xdg_data_home, xdg_config_home
+import tomli
 
 import quocofs
 
 from .util.secure_term import add_lines, secure_print, clear_term
 from .util.fs import local_file_exists
 
-DEFAULT_EDITOR_CONFIG = {"orientation": "horizontal"}
-DOCUMENT_CONFIG_FILENAME = "document_config.json"
+DEFAULT_CONFIG = {
+    "vim": {
+        "path": "vim",
+        "orientation": "horizontal",
+    }
+}
+CONFIG_FILENAME = "config.toml"
 
 
 class QuocoFsManager:
@@ -21,6 +28,7 @@ class QuocoFsManager:
     DEFAULT_SALT = "LCzJKR9jSyc42WHBrTaUMg=="
 
     session: quocofs.Session
+    _config: Dict[str, Any]
 
     def __init__(
         self, data_path: Union[str, Path], config_path: Union[str, Path], salt: bytes
@@ -28,6 +36,7 @@ class QuocoFsManager:
         self._data_path = data_path if data_path is Path else Path(data_path)
         self._config_path = config_path if config_path is Path else Path(config_path)
         self._salt = salt
+        self._config = self._load_config()
         self.initialize_session_interactive()
 
     def create_data_path(self):
@@ -50,6 +59,28 @@ class QuocoFsManager:
 
     def is_initialized(self):
         return self.session is not None
+
+    def _load_config(self):
+        config_path = Path(self._config_path, CONFIG_FILENAME)
+
+        if not config_path.exists():
+            return DEFAULT_CONFIG
+
+        try:
+            with open(config_path, "rb") as config_file:
+                file_config = tomli.load(config_file)["config"]
+        except (tomli.TOMLDecodeError, KeyError):
+            print("couldn't parse config file, using default config", file=sys.stderr)
+            return DEFAULT_CONFIG
+
+        config = copy.deepcopy(DEFAULT_CONFIG)
+
+        # Dumb merge thing
+        for key in config:
+            if key in file_config:
+                config[key].update(file_config[key])
+
+        return config
 
     def generate_key(self, password: str) -> bytes:
         # TODO: Storing the hash this way is insecure and should be done a better way
@@ -114,13 +145,6 @@ class QuocoFsManager:
 
     def edit_documents_vim(self, ids: List[bytes]) -> None:
         documents_read_info = []
-        document_config = DEFAULT_EDITOR_CONFIG
-
-        if local_file_exists(DOCUMENT_CONFIG_FILENAME):
-            with open(DOCUMENT_CONFIG_FILENAME) as document_config_data:
-                # Make sure to include any default keys
-                document_config = {**document_config, **json.load(document_config_data)}
-
         for id in ids:
             path = self.session.object_temp_file(id, "md")
             documents_read_info.append(
@@ -153,14 +177,14 @@ class QuocoFsManager:
         temp_paths = [v["path"] for v in documents_read_info]
         files_argument = " ".join(temp_paths)
         if len(documents_read_info) > 1:
-            split_switch = "o" if document_config["orientation"] == "vertical" else "O"
+            split_switch = (
+                "o" if self._config["vim"]["orientation"] == "vertical" else "O"
+            )
             files_argument = f"-{split_switch} {files_argument}"
             # Account for Vim's "2 files to edit" output
             add_lines()
 
-        vim_path = (
-            document_config["vim_path"] if "vim_path" in document_config else "vim"
-        )
+        vim_path = self._config["vim"]["path"]
 
         command = f'{vim_path} + "+{vi_secure_settings_string}" {files_argument}'
 

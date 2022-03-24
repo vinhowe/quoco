@@ -1,0 +1,5 @@
+[config.vim]
+# Sets the path we use to invoke vim, this example assumes nvim is on the PATH
+path = "nvim"
+# Determines whether to use split or vsplit
+orientation = "horizontal"
